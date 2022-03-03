@@ -1,0 +1,8 @@
+altair
+arch
+matplotlib
+numpy
+pandas
+scipy
+seaborn
+streamlit
