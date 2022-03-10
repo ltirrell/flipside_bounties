@@ -15,7 +15,7 @@ Note: grand prize-winning submissions will assess at least two of the activity m
 )
 
 
-@st.cache(ttl=(3600 * 24))
+@st.cache(ttl=(3600))
 def load_data():
     dfs = []
     # top wallets for different counts
@@ -145,7 +145,7 @@ The number of protocols used per address shows less of a steep dropoff after the
 
 About 1/3 of the 100,000 wallets examined used 3 or more protocols in the last 90 days and 75% used 2 or more. All used at least one protocol.
 
-This facet will be examined in more detail in a future dashboard...
+This facet will be examined in more detail in a future dashboard (see [here](https://share.streamlit.io/ltirrell/flipside_bounties/main/terra/feet_wet_p2.py))
 """
 chart = (
     alt.Chart(df.sort_values("PROTOCOL_COUNT", ascending=False)[:50])
