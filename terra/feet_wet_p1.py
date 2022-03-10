@@ -145,6 +145,9 @@ The number of protocols used per address shows less of a steep dropoff after the
 
 About 1/3 of the 100,000 wallets examined used 3 or more protocols in the last 90 days and 75% used 2 or more. All used at least one protocol.
 
+However, overall, the mean number of prtotocols interacted with for *all* the wallets is less than 1.
+This means that many users may just use their wallet to transfer, or interact with contracts that aren't currently labeled.
+
 This facet will be examined in more detail in a future dashboard (see [here](https://share.streamlit.io/ltirrell/flipside_bounties/main/terra/feet_wet_p2.py))
 """
 chart = (
