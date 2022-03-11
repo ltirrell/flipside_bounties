@@ -43,7 +43,7 @@ def load_data():
             df_in_out[df_in_out.AMOUNT_USD.abs() < 1000].ADDRESS.unique() # get rid of test transactions
         )
     ]
-    last_ran = datetime.datetime.now()
+    last_ran = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z (UTC%z)")
     return df_daily_balance, df_in_out, last_ran
 
 
