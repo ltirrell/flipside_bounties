@@ -118,7 +118,7 @@ Data from [Flipside Crypto](https://flipsidecrypto.xyz/)
 This data is updated hourly, and the dashboard will be further expanded as more knowledge on LFG addresses and transactions are known.
 """
 
-st.caption(f"Last updated: {last_ran:%Y-%m-%d %H:%M}")
+st.caption(f"Last updated: {last_ran}")
 
 
 # Create a dashboard that updates daily to display the Luna Foundation Guard yield reserve. As well, provide at least one visualization and one metric that you think is related to the yield reserve’s growth or depletion. Tweet this out with the hashtag #LFG and #bestanalyticalminds.
