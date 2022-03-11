@@ -99,8 +99,6 @@ chart = (
 st.altair_chart(chart, use_container_width=True)
 
 
-last_ran = datetime.datetime.now()
-st.caption(f"Last updated: {last_ran:%Y-%m-%d %H:%M}")
 
 st.subheader("Sources and notes")
 """
@@ -119,3 +117,12 @@ Data from [Flipside Crypto](https://flipsidecrypto.xyz/)
 
 This data is updated hourly, and the dashboard will be further expanded as more knowledge on LFG addresses and transactions are known.
 """
+
+st.caption(f"Last updated: {last_ran:%Y-%m-%d %H:%M}")
+
+
+# Create a dashboard that updates daily to display the Luna Foundation Guard yield reserve. As well, provide at least one visualization and one metric that you think is related to the yield reserve’s growth or depletion. Tweet this out with the hashtag #LFG and #bestanalyticalminds.
+
+# The best 5 dashboards that go above and beyond to provide a) original and insightful analysis and b) visual appeal, great user experience, and flair, will receive a substantial grand prize. Full $150 payout requires a score of 7 or higher
+
+# We will share these directly with Terraform Labs to receive feedback, and potentially, to do a followup project on the financial health and stability of the Luna Foundation Guard.
