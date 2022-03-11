@@ -28,7 +28,7 @@ In blue is the balance of the LFG wallet address itself, while other colors repr
 # We will share these directly with Terraform Labs to receive feedback, and potentially, to do a followup project on the financial health and stability of the Luna Foundation Guard.
 
 
-@st.cache(ttl=7200, allow_output_mutation=True)
+@st.cache(ttl=4000, allow_output_mutation=True)
 def load_data():
     q = "33537344-58a7-417c-860f-1835fdc8d0ee"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
@@ -189,7 +189,7 @@ Data from [Flipside Crypto](https://flipsidecrypto.xyz/)
         - forg#9122
         - ahkek76#6812
 
-This data is updated every 2 hours, and the dashboard will be further expanded as more knowledge on LFG addresses and transactions are known.
+This data is updated approximately every hour, and the dashboard will be further expanded as more knowledge on LFG addresses and transactions are known.
 """
 
 st.caption(f"Last updated: {last_ran}")
