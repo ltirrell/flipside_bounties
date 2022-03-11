@@ -28,7 +28,7 @@ In blue is the balance of the LFG wallet address itself, while other colors repr
 # We will share these directly with Terraform Labs to receive feedback, and potentially, to do a followup project on the financial health and stability of the Luna Foundation Guard.
 
 
-@st.cache(ttl=7200)
+@st.cache(ttl=7200, allow_output_mutation=True)
 def load_data():
     q = "33537344-58a7-417c-860f-1835fdc8d0ee"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
@@ -89,20 +89,23 @@ st.header("Inflows and outflows")
 """
 The amount (USD) moving into and out of the LFG Wallet is shown here:
 """
-
+df = df_in_out.copy()
+df['name'] = df['ADDRESS_LABEL']
+df['name'][df['name'].isna()] =df.ADDRESS
 chart = (
-    alt.Chart(df_in_out)
+    alt.Chart(df)
     .mark_bar()
     .encode(
         x=alt.X("DATETIME", title=""),
         y=alt.Y(
-            "AMOUNT_USD",
-            title="Amount (USD)",
+            "AMOUNT",
+            title="Amount (LUNA)",
         ),
         color="DIRECTION",
         tooltip=[
             alt.Tooltip("DATETIME", title="Date"),
-            alt.Tooltip("AMOUNT", title="Amount (USD)", format=",.2f"),
+            alt.Tooltip("AMOUNT", title="Amount (LUNA)", format=",.2f"),
+            alt.Tooltip("name", title="Address label"),
         ],
     )
 ).interactive()
