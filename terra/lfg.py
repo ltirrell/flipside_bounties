@@ -1,5 +1,6 @@
 import datetime
 import altair as alt
+from matplotlib import interactive
 import pandas as pd
 import streamlit as st
 
@@ -27,7 +28,7 @@ In blue is the balance of the LFG wallet address itself, while other colors repr
 # We will share these directly with Terraform Labs to receive feedback, and potentially, to do a followup project on the financial health and stability of the Luna Foundation Guard.
 
 
-@st.cache(ttl=7200)
+# @st.cache(ttl=7200)
 def load_data():
     q = "33537344-58a7-417c-860f-1835fdc8d0ee"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
@@ -40,14 +41,23 @@ def load_data():
 
     df_daily_balance = df_daily_balance[
         ~df_daily_balance.ADDRESS.isin(
-            df_in_out[df_in_out.AMOUNT_USD.abs() < 1000].ADDRESS.unique() # get rid of test transactions
+            df_in_out[
+                df_in_out.AMOUNT_USD.abs() < 1000
+            ].ADDRESS.unique()  # get rid of test transactions
         )
     ]
-    last_ran = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z (UTC%z)")
-    return df_daily_balance, df_in_out, last_ran
+
+    q = "16137f94-d5de-4ce9-8e8e-6734691fc42b"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    vesting = pd.read_json(url)
+
+    last_ran = (
+        datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z (UTC%z)")
+    )
+    return df_daily_balance, df_in_out, vesting, last_ran
 
 
-df_daily_balance, df_in_out, last_ran = load_data()
+df_daily_balance, df_in_out, vesting, last_ran = load_data()
 
 balance_by_day = (
     df_daily_balance.groupby(["WALLET_LABEL", "ADDRESS", "DATE"])
@@ -75,9 +85,9 @@ chart = (
 ).interactive()
 st.altair_chart(chart, use_container_width=True)
 
-st.header('Inflows and outflows')
+st.header("Inflows and outflows")
 """
-The amount (USD) moving into and out of the LFG Wallet is shown below
+The amount (USD) moving into and out of the LFG Wallet is shown here:
 """
 
 chart = (
@@ -98,13 +108,74 @@ chart = (
 ).interactive()
 st.altair_chart(chart, use_container_width=True)
 
+st.subheader("Discussion")
+f"""
+In its short, LFG has made a large impact:
+- [Funded the Anchor Yield Reserve with $450 million](https://agora.terra.money/t/capitalising-anchors-reserve-with-450m/4236)
+- [Established a $1 billion Bitcoin reserve](https://twitter.com/terra_money/status/1496162889085902856)
+- [Support the expansion of UST by burning over 4 million LUNA and providing it to the Curve pool](https://twitter.com/LFG_org/status/1501563945076862982)
 
+These drawdowns are reflected in the shrinking balance of the LFG wallet.
+
+The actual LFG yield reserve balance has funding in other wallets which may not yet be reflected in this dashboard.
+This may include addresses on the Ethereum blockchain (related to the Curve pool).
+
+
+Additionally, there were {vesting.TX_COUNT.sum()} transactions on {vesting.DATETIME.count()} days, sent to [this vesting contract](https://finder.extraterrestrial.money/mainnet/address/terra1xmaaewtj7c2s7fjak8g9eqp8ll68hvvyudrfev), for {vesting.AMOUNT.sum():,} LUNA (about ${vesting.AMOUNT_USD.sum():,.2f}).
+
+The first transaction corresponds with the setup of the Bitcoin reserve (about $1 billion)
+The others are sent for an as-yet-unknown reason.
+
+Future updates to this dashboard may investigate this further!
+"""
+vesting = vesting.sort_values(
+    by="DATETIME",
+)
+vesting["cumulative"] = vesting.AMOUNT_USD.cumsum()
+chart = (
+    alt.Chart(vesting)
+    .mark_bar()
+    .encode(
+        x=alt.X("DATETIME", title=""),
+        y=alt.Y(
+            "AMOUNT_USD",
+            title="Amount (USD)",
+        ),
+        tooltip=[
+            alt.Tooltip("DATETIME", title="Date"),
+            alt.Tooltip("AMOUNT_USD", title="Amount (USD)", format=",.2f"),
+            alt.Tooltip("AMOUNT", title="Amount (LUNA)", format=",.2f"),
+            alt.Tooltip("cumulative", title="Cumulative total (USD)", format=",.2f"),
+        ],
+    )
+)
+line = (
+    alt.Chart(vesting)
+    .mark_line(color="red")
+    .encode(
+        x=alt.X("DATETIME", title=""),
+        y=alt.Y(
+            "cumulative",
+            title="Amount (USD)",
+        ),
+        tooltip=[
+            alt.Tooltip("DATETIME", title="Date"),
+            alt.Tooltip("AMOUNT_USD", title="Amount (USD)", format=",.2f"),
+            alt.Tooltip("AMOUNT", title="Amount (LUNA)", format=",.2f"),
+            alt.Tooltip("cumulative", title="Cumulative total (USD)", format=",.2f"),
+        ],
+    )
+)
+
+fig = (chart + line).interactive()
+st.altair_chart(fig, use_container_width=True)
 
 st.subheader("Sources and notes")
 """
 Data from [Flipside Crypto](https://flipsidecrypto.xyz/)
 - [Daily Balances](https://app.flipsidecrypto.com/velocity/queries/33537344-58a7-417c-860f-1835fdc8d0ee)
 - [LFG inflows and outflows](https://app.flipsidecrypto.com/velocity/queries/47e63b57-41c3-4974-bd09-21d8c4f25aad)
+- [Vesting contract](https://app.flipsidecrypto.com/velocity/queries/16137f94-d5de-4ce9-8e8e-6734691fc42b)
 - Inspirations:
     - [LFG inflows and outflows](https://app.flipsidecrypto.com/velocity/queries/89c83ffc-7999-4c86-9c80-d8e68befa438)
     - Discussion on Flipside Crytpo Discord, by users:
@@ -115,14 +186,7 @@ Data from [Flipside Crypto](https://flipsidecrypto.xyz/)
         - forg#9122
         - ahkek76#6812
 
-This data is updated hourly, and the dashboard will be further expanded as more knowledge on LFG addresses and transactions are known.
+This data is updated every 2 hours, and the dashboard will be further expanded as more knowledge on LFG addresses and transactions are known.
 """
 
 st.caption(f"Last updated: {last_ran}")
-
-
-# Create a dashboard that updates daily to display the Luna Foundation Guard yield reserve. As well, provide at least one visualization and one metric that you think is related to the yield reserve’s growth or depletion. Tweet this out with the hashtag #LFG and #bestanalyticalminds.
-
-# The best 5 dashboards that go above and beyond to provide a) original and insightful analysis and b) visual appeal, great user experience, and flair, will receive a substantial grand prize. Full $150 payout requires a score of 7 or higher
-
-# We will share these directly with Terraform Labs to receive feedback, and potentially, to do a followup project on the financial health and stability of the Luna Foundation Guard.
