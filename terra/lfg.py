@@ -2,14 +2,18 @@ import datetime
 import altair as alt
 from matplotlib import interactive
 import pandas as pd
+from PIL import Image
 import streamlit as st
 
-st.title("LFG!")
-st.caption(
-    """
-LUNA Foundation Guard yield reserve
-"""
-)
+
+
+st.title("LFG! Tracking the Luna Foundation Guard reserves and transactions")
+
+
+image = Image.open('./terra/media/lfg_full.png')
+st.image(image,)
+
+
 
 st.header("LUNA Foundation Guard Wallet daily balance")
 """
@@ -192,6 +196,8 @@ Data from [Flipside Crypto](https://flipsidecrypto.xyz/)
         - ahkek76#6812
 
 This data is updated approximately every hour, and the dashboard will be further expanded as more knowledge on LFG addresses and transactions are known.
+
+**Disclaimer**: This analysis is made using public data only, and not affiliated in any way with LFG, Terraform labs, or members of their teams.
 """
 
 st.caption(f"Last updated: {last_ran}")

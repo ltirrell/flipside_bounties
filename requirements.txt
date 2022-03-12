@@ -3,6 +3,7 @@ arch
 matplotlib
 numpy
 pandas
+Pillow
 scipy
 seaborn
 streamlit
