@@ -21,7 +21,7 @@ In blue is the balance of the LFG wallet address itself, while other colors repr
 - **Anchor yield reserve funder**: provided $450 million to the Anchor yield reserve
 - **Ethereum UST reciever**: (Ethereum address) received UST accross the Wormhole bridge to provide UST to Curve pools
 - **Terra -> Ethereum (Wormhole) UST sender**: Sent UST to Ethereum address using Wormhole
-- **UST burner**: Wallet burning LUNA for UST
+- **LUNA burner**: Wallet burning LUNA for UST
 
 Note: this chart may take up to 1 full day to have up-to-date balances
 """
