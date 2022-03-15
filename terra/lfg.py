@@ -1,18 +1,37 @@
 import datetime
 import altair as alt
-from matplotlib import interactive
+import networkx as nx
 import pandas as pd
+from pyvis.network import Network
 from PIL import Image
 import streamlit as st
-
+import streamlit.components.v1 as components
 
 
 st.title("LFG! Tracking the Luna Foundation Guard reserves and transactions")
 
 
-image = Image.open('./terra/media/lfg_full.png')
-st.image(image,)
+image = Image.open("./terra/media/lfg_full.png")
+st.image(
+    image,
+)
 
+st.header("Luna Foundation Guard transactions")
+f"""
+In its short life, LFG has made a large impact:
+- [Funded the Anchor Yield Reserve with $450 million](https://agora.terra.money/t/capitalising-anchors-reserve-with-450m/4236)
+- [Established a $1 billion Bitcoin reserve](https://twitter.com/terra_money/status/1496162889085902856)
+- [Support the expansion of UST by burning over 4 million LUNA and providing it to the Curve pool](https://twitter.com/LFG_org/status/1501563945076862982)
+
+There are some addresses of interest related to LFG:
+- [**LFG wallet**](https://finder.extraterrestrial.money/mainnet/account/terra1gr0xesnseevzt3h4nxr64sh5gk4dwrwgszx3nw): Funded by Terraform labs
+- [**Anchor yield reserve funder**](https://finder.extraterrestrial.money/mainnet/account/terra13h0qevzm8r5q0yknaamlq6m3k8kuluce7yf5lj): provided $450 million to the Anchor yield reserve
+- [**Terra -> Ethereum (Wormhole) UST sender**](https://finder.extraterrestrial.money/mainnet/account/terra1qy36laaky2ns9n98naha2r0nvt3j7q3fpxfs2e): Sent UST to Ethereum address using Wormhole
+- [**LUNA burner**](https://finder.extraterrestrial.money/mainnet/account/terra1cymh5ywgn4azak74h4gsrnakqgel4y9ssersvx): Wallet burning LUNA for UST
+- [**Ethereum UST reciever**](https://etherscan.io/address/0xe3011271416f3a827e25d5251d34a56d83446159): (Ethereum address) received UST accross the Wormhole bridge to provide UST to Curve pools
+
+
+"""
 
 
 st.header("LUNA Foundation Guard Wallet daily balance")
@@ -34,7 +53,7 @@ Note: this chart may take up to 1 full day to have up-to-date balances
 # We will share these directly with Terraform Labs to receive feedback, and potentially, to do a followup project on the financial health and stability of the Luna Foundation Guard.
 
 
-@st.cache(ttl=4000, allow_output_mutation=True)
+@st.cache(ttl=3600, allow_output_mutation=True)
 def load_data():
     q = "33537344-58a7-417c-860f-1835fdc8d0ee"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
@@ -60,10 +79,41 @@ def load_data():
     last_ran = (
         datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z (UTC%z)")
     )
-    return df_daily_balance, df_in_out, vesting, last_ran
+
+    q = "514babaa-91a0-400d-b72a-ecbd3b796780"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    net_data = pd.read_json(url)
+    return df_daily_balance, df_in_out, vesting, last_ran, net_data
 
 
-df_daily_balance, df_in_out, vesting, last_ran = load_data()
+df_daily_balance, df_in_out, vesting, last_ran, net_data = load_data()
+
+grouped_net_df = (
+    net_data.groupby(["SENDER", "RECIPIENT", "TO_LABEL", "FROM_LABEL", "CHAIN"])
+    .agg({"AMOUNT_USD": "sum", "TX_ID": "count"})
+    .reset_index()
+)
+
+edges_df = grouped_net_df.copy()
+edges_df['title'] = edges_df['AMOUNT_USD'].apply(lambda x: f"{x:,.2f}")
+G = nx.from_pandas_edgelist(
+    edges_df,
+    source="FROM_LABEL",
+    target="TO_LABEL",
+    edge_attr=['AMOUNT_USD', 'TX_ID', 'title'],
+    create_using=nx.DiGraph
+)
+
+def net_viz(G):
+    nt = Network(directed=True)
+    nt.from_nx(G)
+    nt.save_graph('./lfg.html')
+
+net_viz(G)
+HtmlFile = open("lfg.html", 'r', encoding='utf-8')
+source_code = HtmlFile.read() 
+components.html(source_code, height = 1200,width=1000)
+
 
 balance_by_day = (
     df_daily_balance.groupby(["WALLET_LABEL", "ADDRESS", "DATE"])
@@ -96,8 +146,8 @@ st.header("Inflows and outflows")
 The amount (USD) moving into and out of the LFG Wallet is shown here:
 """
 df = df_in_out.copy()
-df['name'] = df['ADDRESS_LABEL']
-df['name'][df['name'].isna()] =df.ADDRESS
+df["name"] = df["ADDRESS_LABEL"]
+df["name"][df["name"].isna()] = df.ADDRESS
 chart = (
     alt.Chart(df)
     .mark_bar()
@@ -119,7 +169,7 @@ st.altair_chart(chart, use_container_width=True)
 
 st.subheader("Discussion")
 f"""
-In its short, LFG has made a large impact:
+In its short life, LFG has made a large impact:
 - [Funded the Anchor Yield Reserve with $450 million](https://agora.terra.money/t/capitalising-anchors-reserve-with-450m/4236)
 - [Established a $1 billion Bitcoin reserve](https://twitter.com/terra_money/status/1496162889085902856)
 - [Support the expansion of UST by burning over 4 million LUNA and providing it to the Curve pool](https://twitter.com/LFG_org/status/1501563945076862982)
