@@ -5,6 +5,7 @@ networkx
 numpy
 pandas
 Pillow
+pyvis
 scipy
 seaborn
 streamlit
