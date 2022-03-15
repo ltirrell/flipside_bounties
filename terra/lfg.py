@@ -233,7 +233,7 @@ col3.metric(
 
 st.header("Discussion")
 f"""
-LFG has burned {grouped_net_df[grouped_net_df.TO_LABEL=='terra: mints & burns'].AMOUNT.sum():,.0f} LUNA for UST, and used this to fund Anchor and rebalace the UST-3Pool on Curve.
+LFG has burned {grouped_net_df[grouped_net_df.TO_LABEL=='terra: mints & burns'].AMOUNT.sum():,.0f} LUNA for UST, and used this to fund Anchor and rebalance the UST-3Pool on Curve.
 
 With ${gnosis.AMOUNT_USD.sum():,.0f} as a reserve on Ethereum, {vesting.AMOUNT.sum():,.0f} LUNA vested for BTC (or other, as-yet-unknown puposes), and a wallet balance of {grouped_net_df[grouped_net_df.TO_LABEL=='Luna Foundation Guard'].AMOUNT.sum() - grouped_net_df[grouped_net_df.FROM_LABEL=='Luna Foundation Guard'].AMOUNT.sum():,.0f}, LFG has a solid and diversifying set of assets to provide stability to the UST peg.
 """
