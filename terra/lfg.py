@@ -1,5 +1,5 @@
 import datetime
-import altair as alt
+# import altair as alt
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -7,7 +7,6 @@ from pyvis.network import Network
 from PIL import Image
 import streamlit as st
 import streamlit.components.v1 as components
-
 
 st.title("LFG! Tracking the Luna Foundation Guard reserves and transactions")
 
@@ -148,13 +147,14 @@ def get_color_map(G):
     return color_map
 
 
-size_map = dict(zip(G.nodes, [30] * len(G.nodes)))
-size_map["LFG Wallet"] = 50
-font_map = dict(zip(G.nodes, ["60px helvetica #bdb897"] * len(G.nodes)))
+size_map = dict(zip(G.nodes, [45] * len(G.nodes)))
+size_map["Luna Foundation Guard"] = 90
+size_map["Terraform Labs"] = 60
+font_map = dict(zip(G.nodes, ["80px helvetica #bdb897"] * len(G.nodes)))
 
 address_map = get_address_map(G)
 color_map = get_color_map(G)
-color_map["LFG Wallet"] = "#ebbd5b"
+color_map["Luna Foundation Guard"] = "#ebbd5b"
 nx.set_node_attributes(G, size_map, "size")
 nx.set_node_attributes(G, font_map, "font")
 nx.set_node_attributes(G, address_map, "title")
@@ -163,10 +163,10 @@ nx.set_node_attributes(G, color_map, "color")
 
 
 def net_viz(G):
-    nt = Network(directed=True, width="75%", bgcolor="#051212", )
+    nt = Network(directed=True, bgcolor="#051212", )
     nt.from_nx(G)
     # nt.show_buttons(filter_=["physics"])
-    nt.barnes_hut()
+    nt.barnes_hut(spring_length=400, overlap=0)
     nt.save_graph("./lfg.html")
 
 
