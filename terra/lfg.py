@@ -107,7 +107,7 @@ def create_network(df):
 
     address_map = get_address_map(G)
     color_map = get_color_map(G)
-    color_map["Luna Foundation Guard"] = "#ebbd5b"
+    color_map["Luna Foundation Guard"] = "#E4A00C"
     nx.set_node_attributes(G, size_map, "size")
     nx.set_node_attributes(G, font_map, "font")
     nx.set_node_attributes(G, address_map, "title")
