@@ -24,6 +24,7 @@ def load_data():
     net_data_eth = pd.read_json(url)
 
     net_data = pd.concat([net_data_terra, net_data_eth]).reset_index(drop=True)
+    net_data["BLOCK_TIMESTAMP"] = pd.to_datetime(net_data.BLOCK_TIMESTAMP)
 
     q = "63749e53-fe73-4608-ab5e-040c8e89a093"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
@@ -40,79 +41,79 @@ def load_data():
     )
 
 
-(
-    vesting,
-    net_data,
-    gnosis,
-    last_ran,
-) = load_data()
-
-grouped_net_df = (
-    net_data.groupby(
-        ["SENDER", "RECIPIENT", "TO_LABEL", "FROM_LABEL", "CHAIN", "CURRENCY"]
+def subset_network(df, date_range):
+    net_data = df.copy()[
+        (df.BLOCK_TIMESTAMP >= date_range[0]) & (df.BLOCK_TIMESTAMP < date_range[1])
+    ]
+    grouped_net_df = (
+        net_data.groupby(
+            ["SENDER", "RECIPIENT", "TO_LABEL", "FROM_LABEL", "CHAIN", "CURRENCY"]
+        )
+        .agg({"AMOUNT_USD": "sum", "AMOUNT": "sum", "TX_ID": "count"})
+        .reset_index()
     )
-    .agg({"AMOUNT_USD": "sum", "AMOUNT": "sum", "TX_ID": "count"})
-    .reset_index()
-)
-
-edges_df = grouped_net_df.copy()
-edges_df["title"] = edges_df[["AMOUNT_USD", "TX_ID", "AMOUNT", "CURRENCY"]].apply(
-    lambda x: f"<center><strong>{x.AMOUNT:,.2f} {x.CURRENCY}</strong><br>${x.AMOUNT_USD:,.2f} value<br>{int(x.TX_ID)} transaction(s)</center>",
-    axis=1,
-)
-edges_df["value"] = np.log(edges_df.AMOUNT_USD)
-G = nx.from_pandas_edgelist(
-    edges_df,
-    source="FROM_LABEL",
-    target="TO_LABEL",
-    edge_attr=["AMOUNT_USD", "TX_ID", "title", "value"],
-    # node_attr=['CHAIN', 'SENDER', 'RECIPIENT'],
-    create_using=nx.DiGraph,
-)
+    return grouped_net_df
 
 
-def get_address_map(G):
-    address_map = {}
-    for n in G.nodes:
-        try:
-            address_map[
-                n
-            ] = f"Address: {net_data[net_data.TO_LABEL==n].RECIPIENT.values[0]}"
-        except IndexError:
-            address_map[
-                n
-            ] = f"Address: {net_data[net_data.FROM_LABEL==n].SENDER.values[0]}"
-    return address_map
+def create_network(df):
 
+    edges_df = df.copy()
+    edges_df["title"] = edges_df[["AMOUNT_USD", "TX_ID", "AMOUNT", "CURRENCY"]].apply(
+        lambda x: f"<center><strong>{x.AMOUNT:,.2f} {x.CURRENCY}</strong><br>${x.AMOUNT_USD:,.2f} value<br>{int(x.TX_ID)} transaction(s)</center>",
+        axis=1,
+    )
+    edges_df["value"] = np.log(edges_df.AMOUNT_USD)
+    G = nx.from_pandas_edgelist(
+        edges_df,
+        source="FROM_LABEL",
+        target="TO_LABEL",
+        edge_attr=["AMOUNT_USD", "TX_ID", "title", "value"],
+        # node_attr=['CHAIN', 'SENDER', 'RECIPIENT'],
+        create_using=nx.DiGraph,
+    )
 
-def get_color_map(G):
-    color_map = {}
-    for n in G.nodes:
-        try:
-            if net_data[net_data.TO_LABEL == n].CHAIN.values[0] == "terra":
-                color_map[n] = "#1888ce"
-            else:
-                color_map[n] = "#9e4364"
-        except IndexError:
-            if net_data[net_data.FROM_LABEL == n].CHAIN.values[0] == "terra":
-                color_map[n] = "#1888ce"
-            else:
-                color_map[n] = "#9e4364"
-    return color_map
+    def get_address_map(G):
+        address_map = {}
+        for n in G.nodes:
+            try:
+                address_map[
+                    n
+                ] = f"Address: {net_data[net_data.TO_LABEL==n].RECIPIENT.values[0]}"
+            except IndexError:
+                address_map[
+                    n
+                ] = f"Address: {net_data[net_data.FROM_LABEL==n].SENDER.values[0]}"
+        return address_map
 
+    def get_color_map(G):
+        color_map = {}
+        for n in G.nodes:
+            try:
+                if net_data[net_data.TO_LABEL == n].CHAIN.values[0] == "terra":
+                    color_map[n] = "#1888ce"
+                else:
+                    color_map[n] = "#9e4364"
+            except IndexError:
+                if net_data[net_data.FROM_LABEL == n].CHAIN.values[0] == "terra":
+                    color_map[n] = "#1888ce"
+                else:
+                    color_map[n] = "#9e4364"
+        return color_map
 
-size_map = dict(zip(G.nodes, [45] * len(G.nodes)))
-size_map["Luna Foundation Guard"] = 90
-size_map["Terraform Labs"] = 60
-font_map = dict(zip(G.nodes, ["80px helvetica #bdb897"] * len(G.nodes)))
+    size_map = dict(zip(G.nodes, [45] * len(G.nodes)))
+    size_map["Luna Foundation Guard"] = 90
+    size_map["Terraform Labs"] = 60
+    font_map = dict(zip(G.nodes, ["80px helvetica #bdb897"] * len(G.nodes)))
 
-address_map = get_address_map(G)
-color_map = get_color_map(G)
-color_map["Luna Foundation Guard"] = "#ebbd5b"
-nx.set_node_attributes(G, size_map, "size")
-nx.set_node_attributes(G, font_map, "font")
-nx.set_node_attributes(G, address_map, "title")
-nx.set_node_attributes(G, color_map, "color")
+    address_map = get_address_map(G)
+    color_map = get_color_map(G)
+    color_map["Luna Foundation Guard"] = "#ebbd5b"
+    nx.set_node_attributes(G, size_map, "size")
+    nx.set_node_attributes(G, font_map, "font")
+    nx.set_node_attributes(G, address_map, "title")
+    nx.set_node_attributes(G, color_map, "color")
+
+    return G
 
 
 def net_viz(G):
@@ -126,9 +127,13 @@ def net_viz(G):
     nt.save_graph("./lfg.html")
 
 
-net_viz(G)
-html_file = open("lfg.html", "r", encoding="utf-8")
-graph = html_file.read()
+# load and process data
+(
+    vesting,
+    net_data,
+    gnosis,
+    last_ran,
+) = load_data()
 
 
 ### Content
@@ -148,8 +153,39 @@ In a short few weeks since it was found, LFG has made a large impact:
 Let's F'ing Go investigate how LFG has been using its funding to support its mission of estabilishing a decentralized UST reserve pool.
 """
 
+
 st.header("LFG Transaction Graph")
+
+date_range = st.slider(
+    "Choose the date range for LFG-related transactions to include:",
+    net_data.BLOCK_TIMESTAMP.min().to_pydatetime(),
+    net_data.BLOCK_TIMESTAMP.max().to_pydatetime(),
+    value=(
+        net_data.BLOCK_TIMESTAMP.min().to_pydatetime(),
+        net_data.BLOCK_TIMESTAMP.max().to_pydatetime(),
+    ),
+    format="YYYY-MM-DD",
+)
+
+# latest network, for current values
+grouped_net_df = subset_network(
+    net_data,
+    (
+        net_data.BLOCK_TIMESTAMP.min().to_pydatetime(),
+        net_data.BLOCK_TIMESTAMP.max().to_pydatetime(),
+    ),
+)
+# grouped_net_df = grouped_nets[max(grouped_nets.keys())]
+
+G = create_network(subset_network(net_data, date_range))
+net_viz(G)
+html_file = open("lfg.html", "r", encoding="utf-8")
+graph = html_file.read()
 components.html(graph, height=550, width=1000)
+
+# st.caption(
+#     f"LFG-related transactions, from {date_range[0]:%Y-%m-%d} to {date_range[1]:%Y-%m-%d}"
+# )
 
 
 """
@@ -227,7 +263,7 @@ col2.metric(
 col3.metric(
     "Gnosis Safe balance",
     f"${gnosis.AMOUNT_USD.sum():,.0f}",
-    delta=f"${round(gnosis.AMOUNT_USD.sum()- grouped_net_df[grouped_net_df.TO_LABEL=='Curve: UST-3Pool'].AMOUNT_USD.sum(), -3):,.0f}",
+    delta=f"${gnosis.AMOUNT_USD.sum()- grouped_net_df[grouped_net_df.TO_LABEL=='Curve: UST-3Pool'].AMOUNT_USD.sum():,.0f}",
 )
 
 
