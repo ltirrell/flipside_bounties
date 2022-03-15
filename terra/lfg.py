@@ -9,7 +9,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 
-@st.cache(ttl=3600, allow_output_mutation=True)
+@st.cache(ttl=7200, allow_output_mutation=True)
 def load_data():
     q = "16137f94-d5de-4ce9-8e8e-6734691fc42b"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
