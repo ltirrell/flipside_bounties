@@ -1,6 +1,7 @@
 import datetime
 import altair as alt
 import networkx as nx
+import numpy as np
 import pandas as pd
 from pyvis.network import Network
 from PIL import Image
@@ -82,152 +83,214 @@ def load_data():
 
     q = "514babaa-91a0-400d-b72a-ecbd3b796780"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
-    net_data = pd.read_json(url)
+    net_data_terra = pd.read_json(url)
+
+    q = "0b6a2281-1bed-4de0-b872-1c2fc474fde9"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    net_data_eth = pd.read_json(url)
+
+    net_data = pd.concat([net_data_terra, net_data_eth]).reset_index(drop=True)
+
     return df_daily_balance, df_in_out, vesting, last_ran, net_data
 
 
 df_daily_balance, df_in_out, vesting, last_ran, net_data = load_data()
 
 grouped_net_df = (
-    net_data.groupby(["SENDER", "RECIPIENT", "TO_LABEL", "FROM_LABEL", "CHAIN"])
-    .agg({"AMOUNT_USD": "sum", "TX_ID": "count"})
+    net_data.groupby(["SENDER", "RECIPIENT", "TO_LABEL", "FROM_LABEL", "CHAIN", "CURRENCY"])
+    .agg({"AMOUNT_USD": "sum", "AMOUNT": "sum", "TX_ID": "count"})
     .reset_index()
 )
 
 edges_df = grouped_net_df.copy()
-edges_df['title'] = edges_df['AMOUNT_USD'].apply(lambda x: f"{x:,.2f}")
+edges_df["title"] = edges_df[["AMOUNT_USD", "TX_ID", "AMOUNT", "CURRENCY"]].apply(
+    lambda x: f"<center><strong>{x.AMOUNT:,.2f} {x.CURRENCY}</strong><br>${x.AMOUNT_USD:,.2f} value<br>{int(x.TX_ID)} transaction(s)</center>",
+    axis=1,
+)
+edges_df['value']=15*np.log(edges_df.AMOUNT_USD)
 G = nx.from_pandas_edgelist(
     edges_df,
     source="FROM_LABEL",
     target="TO_LABEL",
-    edge_attr=['AMOUNT_USD', 'TX_ID', 'title'],
+    edge_attr=["AMOUNT_USD", "TX_ID", "title", "value"],
+    # node_attr=['CHAIN', 'SENDER', 'RECIPIENT'],
     create_using=nx.DiGraph
 )
 
+
+def get_address_map(G):
+    address_map = {}
+    for n in G.nodes:
+        try:
+            address_map[
+                n
+            ] = f"Address: {net_data[net_data.TO_LABEL==n].RECIPIENT.values[0]}"
+        except IndexError:
+            address_map[
+                n
+            ] = f"Address: {net_data[net_data.FROM_LABEL==n].SENDER.values[0]}"
+    return address_map
+
+
+def get_color_map(G):
+    color_map = {}
+    for n in G.nodes:
+        try:
+            if net_data[net_data.TO_LABEL == n].CHAIN.values[0] == "terra":
+                color_map[n] = "#1888ce"
+            else:
+                color_map[n] = "#9e4364"
+        except IndexError:
+            if net_data[net_data.FROM_LABEL == n].CHAIN.values[0] == "terra":
+                color_map[n] = "#1888ce"
+            else:
+                color_map[n] = "#9e4364"
+    return color_map
+
+
+size_map = dict(zip(G.nodes, [30] * len(G.nodes)))
+size_map["LFG Wallet"] = 50
+font_map = dict(zip(G.nodes, ["60px helvetica #bdb897"] * len(G.nodes)))
+
+address_map = get_address_map(G)
+color_map = get_color_map(G)
+color_map["LFG Wallet"] = "#ebbd5b"
+nx.set_node_attributes(G, size_map, "size")
+nx.set_node_attributes(G, font_map, "font")
+nx.set_node_attributes(G, address_map, "title")
+nx.set_node_attributes(G, color_map, "color")
+# nx.set_node_attributes(G, weight_map, "weights")
+
+
 def net_viz(G):
-    nt = Network(directed=True)
+    nt = Network(directed=True, width="75%", bgcolor="#051212", )
     nt.from_nx(G)
-    nt.save_graph('./lfg.html')
+    # nt.show_buttons(filter_=["physics"])
+    nt.barnes_hut()
+    nt.save_graph("./lfg.html")
+
 
 net_viz(G)
-HtmlFile = open("lfg.html", 'r', encoding='utf-8')
-source_code = HtmlFile.read() 
-components.html(source_code, height = 1200,width=1000)
+HtmlFile = open("lfg.html", "r", encoding="utf-8")
+source_code = HtmlFile.read()
+components.html(source_code, height=700, width=1000)
 
 
-balance_by_day = (
-    df_daily_balance.groupby(["WALLET_LABEL", "ADDRESS", "DATE"])
-    .BALANCE_USD.sum()
-    .reset_index()
-)
-
-chart = (
-    alt.Chart(balance_by_day)
-    .mark_bar()
-    .encode(
-        x=alt.X("DATE", title=""),
-        y=alt.Y(
-            "BALANCE_USD",
-            title="Total balance (USD)",
-        ),
-        color=alt.Color("WALLET_LABEL", sort=["LFG Wallet"]),
-        tooltip=[
-            alt.Tooltip("DATE", title="Date"),
-            alt.Tooltip("WALLET_LABEL", title="Wallet label"),
-            alt.Tooltip("BALANCE_USD", title="Total balance (USD)", format=",.2f"),
-            alt.Tooltip("ADDRESS", title="Address"),
-        ],
-    )
-).interactive()
-st.altair_chart(chart, use_container_width=True)
-
-st.header("Inflows and outflows")
-"""
-The amount (USD) moving into and out of the LFG Wallet is shown here:
-"""
-df = df_in_out.copy()
-df["name"] = df["ADDRESS_LABEL"]
-df["name"][df["name"].isna()] = df.ADDRESS
-chart = (
-    alt.Chart(df)
-    .mark_bar()
-    .encode(
-        x=alt.X("DATETIME", title=""),
-        y=alt.Y(
-            "AMOUNT",
-            title="Amount (LUNA)",
-        ),
-        color="DIRECTION",
-        tooltip=[
-            alt.Tooltip("DATETIME", title="Date"),
-            alt.Tooltip("AMOUNT", title="Amount (LUNA)", format=",.2f"),
-            alt.Tooltip("name", title="Address label"),
-        ],
-    )
-).interactive()
-st.altair_chart(chart, use_container_width=True)
-
-st.subheader("Discussion")
-f"""
-In its short life, LFG has made a large impact:
-- [Funded the Anchor Yield Reserve with $450 million](https://agora.terra.money/t/capitalising-anchors-reserve-with-450m/4236)
-- [Established a $1 billion Bitcoin reserve](https://twitter.com/terra_money/status/1496162889085902856)
-- [Support the expansion of UST by burning over 4 million LUNA and providing it to the Curve pool](https://twitter.com/LFG_org/status/1501563945076862982)
-
-These drawdowns are reflected in the shrinking balance of the LFG wallet.
-
-The actual LFG yield reserve balance has funding in other wallets which may not yet be reflected in this dashboard.
-This may include addresses on the Ethereum blockchain (related to the Curve pool).
 
 
-Additionally, there were {vesting.TX_COUNT.sum()} transactions on {vesting.DATETIME.count()} days, sent to [this vesting contract](https://finder.extraterrestrial.money/mainnet/address/terra1xmaaewtj7c2s7fjak8g9eqp8ll68hvvyudrfev), for {vesting.AMOUNT.sum():,} LUNA (about ${vesting.AMOUNT_USD.sum():,.2f}).
+# balance_by_day = (
+#     df_daily_balance.groupby(["WALLET_LABEL", "ADDRESS", "DATE"])
+#     .BALANCE_USD.sum()
+#     .reset_index()
+# )
 
-The first transaction corresponds with the setup of the Bitcoin reserve (about $1 billion)
-The others are sent for an as-yet-unknown reason.
+# chart = (
+#     alt.Chart(balance_by_day)
+#     .mark_bar()
+#     .encode(
+#         x=alt.X("DATE", title=""),
+#         y=alt.Y(
+#             "BALANCE_USD",
+#             title="Total balance (USD)",
+#         ),
+#         color=alt.Color("WALLET_LABEL", sort=["LFG Wallet"]),
+#         tooltip=[
+#             alt.Tooltip("DATE", title="Date"),
+#             alt.Tooltip("WALLET_LABEL", title="Wallet label"),
+#             alt.Tooltip("BALANCE_USD", title="Total balance (USD)", format=",.2f"),
+#             alt.Tooltip("ADDRESS", title="Address"),
+#         ],
+#     )
+# ).interactive()
+# st.altair_chart(chart, use_container_width=True)
 
-Future updates to this dashboard may investigate this further!
-"""
-vesting = vesting.sort_values(
-    by="DATETIME",
-)
-vesting["cumulative"] = vesting.AMOUNT_USD.cumsum()
-chart = (
-    alt.Chart(vesting)
-    .mark_bar()
-    .encode(
-        x=alt.X("DATETIME", title=""),
-        y=alt.Y(
-            "AMOUNT_USD",
-            title="Amount (USD)",
-        ),
-        tooltip=[
-            alt.Tooltip("DATETIME", title="Date"),
-            alt.Tooltip("AMOUNT_USD", title="Amount (USD)", format=",.2f"),
-            alt.Tooltip("AMOUNT", title="Amount (LUNA)", format=",.2f"),
-            alt.Tooltip("cumulative", title="Cumulative total (USD)", format=",.2f"),
-        ],
-    )
-)
-line = (
-    alt.Chart(vesting)
-    .mark_line(color="red")
-    .encode(
-        x=alt.X("DATETIME", title=""),
-        y=alt.Y(
-            "cumulative",
-            title="Amount (USD)",
-        ),
-        tooltip=[
-            alt.Tooltip("DATETIME", title="Date"),
-            alt.Tooltip("AMOUNT_USD", title="Amount (USD)", format=",.2f"),
-            alt.Tooltip("AMOUNT", title="Amount (LUNA)", format=",.2f"),
-            alt.Tooltip("cumulative", title="Cumulative total (USD)", format=",.2f"),
-        ],
-    )
-)
+# st.header("Inflows and outflows")
+# """
+# The amount (USD) moving into and out of the LFG Wallet is shown here:
+# """
+# df = df_in_out.copy()
+# df["name"] = df["ADDRESS_LABEL"]
+# df["name"][df["name"].isna()] = df.ADDRESS
+# chart = (
+#     alt.Chart(df)
+#     .mark_bar()
+#     .encode(
+#         x=alt.X("DATETIME", title=""),
+#         y=alt.Y(
+#             "AMOUNT",
+#             title="Amount (LUNA)",
+#         ),
+#         color="DIRECTION",
+#         tooltip=[
+#             alt.Tooltip("DATETIME", title="Date"),
+#             alt.Tooltip("AMOUNT", title="Amount (LUNA)", format=",.2f"),
+#             alt.Tooltip("name", title="Address label"),
+#         ],
+#     )
+# ).interactive()
+# st.altair_chart(chart, use_container_width=True)
 
-fig = (chart + line).interactive()
-st.altair_chart(fig, use_container_width=True)
+# st.subheader("Discussion")
+# f"""
+# In its short life, LFG has made a large impact:
+# - [Funded the Anchor Yield Reserve with $450 million](https://agora.terra.money/t/capitalising-anchors-reserve-with-450m/4236)
+# - [Established a $1 billion Bitcoin reserve](https://twitter.com/terra_money/status/1496162889085902856)
+# - [Support the expansion of UST by burning over 4 million LUNA and providing it to the Curve pool](https://twitter.com/LFG_org/status/1501563945076862982)
+
+# These drawdowns are reflected in the shrinking balance of the LFG wallet.
+
+# The actual LFG yield reserve balance has funding in other wallets which may not yet be reflected in this dashboard.
+# This may include addresses on the Ethereum blockchain (related to the Curve pool).
+
+
+# Additionally, there were {vesting.TX_COUNT.sum()} transactions on {vesting.DATETIME.count()} days, sent to [this vesting contract](https://finder.extraterrestrial.money/mainnet/address/terra1xmaaewtj7c2s7fjak8g9eqp8ll68hvvyudrfev), for {vesting.AMOUNT.sum():,} LUNA (about ${vesting.AMOUNT_USD.sum():,.2f}).
+
+# The first transaction corresponds with the setup of the Bitcoin reserve (about $1 billion)
+# The others are sent for an as-yet-unknown reason.
+
+# Future updates to this dashboard may investigate this further!
+# """
+# vesting = vesting.sort_values(
+#     by="DATETIME",
+# )
+# vesting["cumulative"] = vesting.AMOUNT_USD.cumsum()
+# chart = (
+#     alt.Chart(vesting)
+#     .mark_bar()
+#     .encode(
+#         x=alt.X("DATETIME", title=""),
+#         y=alt.Y(
+#             "AMOUNT_USD",
+#             title="Amount (USD)",
+#         ),
+#         tooltip=[
+#             alt.Tooltip("DATETIME", title="Date"),
+#             alt.Tooltip("AMOUNT_USD", title="Amount (USD)", format=",.2f"),
+#             alt.Tooltip("AMOUNT", title="Amount (LUNA)", format=",.2f"),
+#             alt.Tooltip("cumulative", title="Cumulative total (USD)", format=",.2f"),
+#         ],
+#     )
+# )
+# line = (
+#     alt.Chart(vesting)
+#     .mark_line(color="red")
+#     .encode(
+#         x=alt.X("DATETIME", title=""),
+#         y=alt.Y(
+#             "cumulative",
+#             title="Amount (USD)",
+#         ),
+#         tooltip=[
+#             alt.Tooltip("DATETIME", title="Date"),
+#             alt.Tooltip("AMOUNT_USD", title="Amount (USD)", format=",.2f"),
+#             alt.Tooltip("AMOUNT", title="Amount (LUNA)", format=",.2f"),
+#             alt.Tooltip("cumulative", title="Cumulative total (USD)", format=",.2f"),
+#         ],
+#     )
+# )
+
+# fig = (chart + line).interactive()
+# st.altair_chart(fig, use_container_width=True)
 
 st.subheader("Sources and notes")
 """
