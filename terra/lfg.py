@@ -9,7 +9,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 
-@st.cache(ttl=4800, allow_output_mutation=True)
+# @st.cache(ttl=4800, allow_output_mutation=True)
 def load_data():
     q = "16137f94-d5de-4ce9-8e8e-6734691fc42b"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
@@ -196,33 +196,48 @@ Second order connections (addresses that transacted with addresses funded by LFG
 - Hovering over nodes shows its account address
 - Yellow represents transactions coming from the LFG wallet, blue represesents other transactions on the Terra blockchain, and red represensents Ethereum transactions.
 """
+latest_luna_price = net_data.sort_values(
+    by="BLOCK_TIMESTAMP", ascending=False
+).LUNA_PRICE_USD.values[0]
+
 st.header("Key Wallets and Metrics")
+f"""
+Note that dollar amounts below should be treated as approximates. Values without a '$' are in native currency.
+Dollar values associated with LUNA were calculated using the latest price (${latest_luna_price:.2f}).
+"""
+
 st.subheader("LFG actions 💰")
 """
 LFG's main wallet sends out LUNA to other wallets or smart contracts to complete its goals, including vesting LUNA for a decentralized reserve and funding the Anchor Yield reserve.
 - [**Luna Foundation Guard**](https://finder.extraterrestrial.money/mainnet/account/terra1gr0xesnseevzt3h4nxr64sh5gk4dwrwgszx3nw): Funded by Terraform labs, the main wallet of LFG.
 """
+lfg_balance_luna = (
+    grouped_net_df[grouped_net_df.TO_LABEL == "Luna Foundation Guard"].AMOUNT.sum()
+    - grouped_net_df[grouped_net_df.FROM_LABEL == "Luna Foundation Guard"].AMOUNT.sum()
+)
+
 col1, col2 = st.columns(2)
 col1.metric(
     "LFG Wallet Balance, LUNA",
-    f"{grouped_net_df[grouped_net_df.TO_LABEL=='Luna Foundation Guard'].AMOUNT.sum() - grouped_net_df[grouped_net_df.FROM_LABEL=='Luna Foundation Guard'].AMOUNT.sum():,.0f}",
+    f"{lfg_balance_luna:,.0f}",
 )
 col2.metric(
     "LFG Wallet Balance value, USD",
-    f"${grouped_net_df[grouped_net_df.TO_LABEL=='Luna Foundation Guard'].AMOUNT_USD.sum() - grouped_net_df[grouped_net_df.FROM_LABEL=='Luna Foundation Guard'].AMOUNT_USD.sum():,.0f}",
+    f"${lfg_balance_luna*latest_luna_price:,.0f}",
 )
 """
 - [**Vesting Contract**](https://finder.extraterrestrial.money/mainnet/account/terra1xmaaewtj7c2s7fjak8g9eqp8ll68hvvyudrfev): Over \$2 billion worth of LUNA was sent here. Presumably, this will fund the purchase of the BTC Reserve, with approximately \$1 billion left over.
 """
+vested_amount = vesting.AMOUNT.sum()
 col1, col2 = st.columns(2)
-col1.metric("Vested LUNA", f"{vesting.AMOUNT.sum():,.0f}")
-col2.metric("Vested LUNA value, USD", f"${vesting.AMOUNT_USD.sum():,.0f}")
+col1.metric("Vested LUNA", f"{vested_amount:,.0f}")
+col2.metric("Vested LUNA value, USD", f"${vested_amount*latest_luna_price:,.0f}")
 """
 - [**Fund Anchor Reserve**](https://finder.extraterrestrial.money/mainnet/account/terra13h0qevzm8r5q0yknaamlq6m3k8kuluce7yf5lj): provided funding to the Anchor Yield Reserce.
 """
 st.metric(
     "Anchor Yield Reserve supplement value, UST",
-    f"${grouped_net_df[grouped_net_df.TO_LABEL=='anchor: Overseer'].AMOUNT.sum():,.0f}",
+    f"{grouped_net_df[grouped_net_df.TO_LABEL=='anchor: Overseer'].AMOUNT.sum():,.0f}",
 )
 "-----"
 st.subheader("Luna Burn 🌕🔥")
@@ -231,14 +246,17 @@ Several wallets were used to burn LUNA for UST, for example this one:
 - [**Burn LUNA for UST**](https://finder.extraterrestrial.money/mainnet/account/terra1cymh5ywgn4azak74h4gsrnakqgel4y9ssersvx): Wallet burning LUNA for UST, at a rate of about 1000 / minute between 10-Mar and 13-Mar.
 The total LUNA burned by LFG-associated wallets is:
 """
+burned_luna = grouped_net_df[
+    grouped_net_df.TO_LABEL == "terra: mints & burns"
+].AMOUNT.sum()
 col1, col2 = st.columns(2)
 col1.metric(
     "LUNA burned",
-    f"{grouped_net_df[grouped_net_df.TO_LABEL=='terra: mints & burns'].AMOUNT.sum():,.0f}",
+    f"{burned_luna:,.0f}",
 )
 col2.metric(
     "LUNA burned value, USD",
-    f"${grouped_net_df[grouped_net_df.TO_LABEL=='terra: mints & burns'].AMOUNT_USD.sum():,.0f}",
+    f"${burned_luna*latest_luna_price:,.0f}",
 )
 "-----"
 st.subheader("Bridging to Ethereum 🌉")
@@ -249,8 +267,6 @@ To rebalance supply on Curve, the most popular stablecoin exchange, UST was brid
 - [**Ethereum UST reciever**](https://etherscan.io/address/0xe3011271416f3a827e25d5251d34a56d83446159): Ethereum address received UST accross the Wormhole bridge to provide UST to Curve pools
 - [**Gnosis Safe**](https://etherscan.io/address/0xad41bd1cf3fd753017ef5c0da8df31a3074ea1ea): [Gnosis Safe](https://gnosis-safe.io/) is a multi-signature asset management platform for Ethereum. USDT received from Curve was sent here.
 """
-
-
 col1, col2, col3 = st.columns(3)
 col1.metric(
     "UST bridged to Ethereum",
@@ -263,7 +279,7 @@ col2.metric(
 col3.metric(
     "Gnosis Safe balance",
     f"${gnosis.AMOUNT_USD.sum():,.0f}",
-    delta=f"${gnosis.AMOUNT_USD.sum()- grouped_net_df[grouped_net_df.TO_LABEL=='Curve: UST-3Pool'].AMOUNT_USD.sum():,.0f}",
+    delta=f"${gnosis.AMOUNT_USD.sum()- grouped_net_df[grouped_net_df.TO_LABEL=='wormhole: wormhole'].AMOUNT_USD.sum():,.0f}",
 )
 
 
