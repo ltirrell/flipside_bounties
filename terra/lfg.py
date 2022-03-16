@@ -9,7 +9,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 
-@st.cache(ttl=7200, allow_output_mutation=True)
+@st.cache(ttl=4800, allow_output_mutation=True)
 def load_data():
     q = "16137f94-d5de-4ce9-8e8e-6734691fc42b"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
@@ -43,7 +43,7 @@ def load_data():
 
 def subset_network(df, date_range):
     net_data = df.copy()[
-        (df.BLOCK_TIMESTAMP >= date_range[0]) & (df.BLOCK_TIMESTAMP < date_range[1])
+        (df.BLOCK_TIMESTAMP >= date_range[0]) & (df.BLOCK_TIMESTAMP <= date_range[1])
     ]
     grouped_net_df = (
         net_data.groupby(
@@ -135,6 +135,14 @@ def net_viz(G):
     last_ran,
 ) = load_data()
 
+# latest network, for current values
+grouped_net_df = subset_network(
+    net_data,
+    (
+        net_data.BLOCK_TIMESTAMP.min().to_pydatetime(),
+        net_data.BLOCK_TIMESTAMP.max().to_pydatetime(),
+    ),
+)
 
 ### Content
 st.title("LFG! Tracking the Luna Foundation Guard reserves and transactions")
@@ -167,14 +175,6 @@ date_range = st.slider(
     format="YYYY-MM-DD",
 )
 
-# latest network, for current values
-grouped_net_df = subset_network(
-    net_data,
-    (
-        net_data.BLOCK_TIMESTAMP.min().to_pydatetime(),
-        net_data.BLOCK_TIMESTAMP.max().to_pydatetime(),
-    ),
-)
 # grouped_net_df = grouped_nets[max(grouped_nets.keys())]
 
 G = create_network(subset_network(net_data, date_range))
