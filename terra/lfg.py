@@ -202,7 +202,7 @@ latest_luna_price = net_data.sort_values(
 
 st.header("Key Wallets and Metrics")
 f"""
-Note that dollar amounts below should be treated as approximates. Values without a '$' are in native currency.
+Note that dollar amounts below should be treated as approximates. Values without a '\$' are in native currency.
 Dollar values associated with LUNA were calculated using the latest price (${latest_luna_price:.2f}).
 """
 
