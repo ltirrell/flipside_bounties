@@ -284,12 +284,24 @@ col2.metric(
     "UST swapped on Curve",
     f"${grouped_net_df[grouped_net_df.TO_LABEL=='Curve: UST-3Pool'].AMOUNT_USD.sum():,.0f}",
 )
+
+try:
+    from_lfg = gnosis[gnosis.LABEL_FROM == "Ethereum UST reciever"]
+except AttributeError:
+    from_lfg = gnosis  # HACK: dataset has new colums, this is used while the cache is being updated
+
+
 col3.metric(
     "Amount transferred to Gnosis Safe",
-    f"${gnosis.AMOUNT_USD.sum():,.0f}",
-    delta=f"${gnosis.AMOUNT_USD.sum()- grouped_net_df[grouped_net_df.TO_LABEL=='wormhole: wormhole'].AMOUNT_USD.sum():,.0f}",
+    f"${from_lfg.AMOUNT_USD.sum():,.0f}",
+    delta=f"${from_lfg.AMOUNT_USD.sum() - grouped_net_df[grouped_net_df.TO_LABEL=='wormhole: wormhole'].AMOUNT_USD.sum():,.0f}".replace(
+        "$-", "-$"
+    ),
 )
-
+col1, col2 = st.columns([2, 1])
+col1.caption("**Note**: ETH data may be updated at a different time than Terra data")
+col2.caption("Estimated profit/loss:\n`UST bridged - Gnosis Transfer Amount`")
+# st.metric()
 
 st.header("Discussion")
 f"""
