@@ -285,7 +285,7 @@ col2.metric(
     f"${grouped_net_df[grouped_net_df.TO_LABEL=='Curve: UST-3Pool'].AMOUNT_USD.sum():,.0f}",
 )
 col3.metric(
-    "Gnosis Safe balance",
+    "Amount transferred to Gnosis Safe",
     f"${gnosis.AMOUNT_USD.sum():,.0f}",
     delta=f"${gnosis.AMOUNT_USD.sum()- grouped_net_df[grouped_net_df.TO_LABEL=='wormhole: wormhole'].AMOUNT_USD.sum():,.0f}",
 )
