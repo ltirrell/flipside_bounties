@@ -9,7 +9,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 
-# @st.cache(ttl=4800, allow_output_mutation=True)
+@st.cache(ttl=4800, allow_output_mutation=True)
 def load_data():
     q = "16137f94-d5de-4ce9-8e8e-6734691fc42b"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
@@ -187,24 +187,32 @@ components.html(graph, height=550, width=1000)
 #     f"LFG-related transactions, from {date_range[0]:%Y-%m-%d} to {date_range[1]:%Y-%m-%d}"
 # )
 
+try:
+    latest_luna_price = net_data.sort_values(
+        by="BLOCK_TIMESTAMP", ascending=False
+    ).LUNA_PRICE_USD.values[0]
+except AttributeError:
+    latest_luna_price = 88  # HACK: dataset has new LUNA_PRICE_USD, this is used while the cache is being updated
 
-"""
+f"""
 The interactive network of all transactions to and from the [**LFG wallet**](https://finder.extraterrestrial.money/mainnet/account/terra1gr0xesnseevzt3h4nxr64sh5gk4dwrwgszx3nw) are shown above, where nodes are wallet addresses and edges represent transactions between them.
 Second order connections (addresses that transacted with addresses funded by LFG) are also shown.
 - Edges are weighted by total USD value of transactions between the addresses
 - Hovering over the edges shows the total transaction amount in native currencies and the number of total transactions
 - Hovering over nodes shows its account address
 - Yellow represents transactions coming from the LFG wallet, blue represesents other transactions on the Terra blockchain, and red represensents Ethereum transactions.
+
+
+Note that dollar amounts in these analyses should be treated as approximates. 
+In some cases, the estimated LUNA price is not available at the time of transaction.
+
+Dollar values associated with LUNA were calculated using the latest price (\${latest_luna_price:.2f}).
+Values without a '\$' are in native currency, and are always as accurate as the data source.
 """
-latest_luna_price = net_data.sort_values(
-    by="BLOCK_TIMESTAMP", ascending=False
-).LUNA_PRICE_USD.values[0]
+
 
 st.header("Key Wallets and Metrics")
-f"""
-Note that dollar amounts below should be treated as approximates. Values without a '\$' are in native currency.
-Dollar values associated with LUNA were calculated using the latest price (${latest_luna_price:.2f}).
-"""
+
 
 st.subheader("LFG actions 💰")
 """
