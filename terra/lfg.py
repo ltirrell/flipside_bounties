@@ -30,6 +30,10 @@ def load_data():
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
     gnosis = pd.read_json(url)
 
+    # q = "83945792-fbd4-4ab3-a09d-7bd079dc6078"
+    # url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    # gnosis_balance = pd.read_json(url)
+
     last_ran = (
         datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z (UTC%z)")
     )
@@ -37,6 +41,7 @@ def load_data():
         vesting,
         net_data,
         gnosis,
+        # gnosis_balance,
         last_ran,
     )
 
@@ -132,6 +137,7 @@ def net_viz(G):
     vesting,
     net_data,
     gnosis,
+    # gnosis_balance,
     last_ran,
 ) = load_data()
 
@@ -271,9 +277,9 @@ st.subheader("Bridging to Ethereum 🌉")
 """
 UST aims to be *the* decentralized currency, so it needs to be readily available across blockchains.
 To rebalance supply on Curve, the most popular stablecoin exchange, UST was bridged to Ethereum and sold for USDT, which was stored in Gnosis Safe.
-- [**Send UST to Ethereum**](https://finder.extraterrestrial.money/mainnet/account/terra1qy36laaky2ns9n98naha2r0nvt3j7q3fpxfs2e): Sent UST to Ethereum address using Wormhole, for depositing into Curve.
+- [**Send UST to Ethereum**](https://finder.extraterrestrial.money/mainnet/account/terra1qy36laaky2ns9n98naha2r0nvt3j7q3fpxfs2e): This address UST to Ethereum address using Wormhole, to rebalance Curve UST supply by swapping for another stablecoin.
 - [**Ethereum UST reciever**](https://etherscan.io/address/0xe3011271416f3a827e25d5251d34a56d83446159): Ethereum address received UST accross the Wormhole bridge to provide UST to Curve pools
-- [**Gnosis Safe**](https://etherscan.io/address/0xad41bd1cf3fd753017ef5c0da8df31a3074ea1ea): [Gnosis Safe](https://gnosis-safe.io/) is a multi-signature asset management platform for Ethereum. USDT received from Curve was sent here.
+- [**Gnosis Safe**](https://etherscan.io/address/0xad41bd1cf3fd753017ef5c0da8df31a3074ea1ea): [Gnosis Safe](https://gnosis-safe.io/) is a multi-signature asset management platform for Ethereum. USDT received from Curve was sent to this address.
 """
 col1, col2, col3 = st.columns(3)
 col1.metric(
@@ -281,7 +287,7 @@ col1.metric(
     f"${grouped_net_df[grouped_net_df.TO_LABEL=='wormhole: wormhole'].AMOUNT_USD.sum():,.0f}",
 )
 col2.metric(
-    "UST swapped on Curve",
+    "UST Swapped on the Curve UST-3Pool",
     f"${grouped_net_df[grouped_net_df.TO_LABEL=='Curve: UST-3Pool'].AMOUNT_USD.sum():,.0f}",
 )
 
@@ -299,8 +305,8 @@ col3.metric(
     ),
 )
 col1, col2 = st.columns([2, 1])
-col1.caption("**Note**: ETH data may be updated at a different time than Terra data")
-col2.caption("Estimated profit/loss:\n`UST bridged - Gnosis Transfer Amount`")
+col1.caption("UST bridged to Ethereum was used to rebalance the Curve UST-3Pool by swapping for USDT\n\n**Note**: ETH data may be updated at a different time than Terra data")
+col2.caption("Estimated profit/loss:\n\n`UST bridged - Gnosis Transfer Amount`")
 # st.metric()
 
 st.header("Discussion")
