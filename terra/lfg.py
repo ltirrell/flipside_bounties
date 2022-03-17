@@ -30,9 +30,13 @@ def load_data():
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
     gnosis = pd.read_json(url)
 
-    # q = "83945792-fbd4-4ab3-a09d-7bd079dc6078"
+    q = "83945792-fbd4-4ab3-a09d-7bd079dc6078"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    eth_balances = pd.read_json(url)
+
+    # q = "927f77c7-2537-4c92-af68-c24f3ce701cc"
     # url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
-    # gnosis_balance = pd.read_json(url)
+    # terra_balances = pd.read_json(url)
 
     last_ran = (
         datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z (UTC%z)")
@@ -41,7 +45,8 @@ def load_data():
         vesting,
         net_data,
         gnosis,
-        # gnosis_balance,
+        eth_balances,
+        # terra_balances,
         last_ran,
     )
 
@@ -105,18 +110,19 @@ def create_network(df):
                     color_map[n] = "#9e4364"
         return color_map
 
-    size_map = dict(zip(G.nodes, [45] * len(G.nodes)))
-    size_map["Luna Foundation Guard"] = 90
-    size_map["Terraform Labs"] = 60
     font_map = dict(zip(G.nodes, ["80px helvetica #bdb897"] * len(G.nodes)))
 
     address_map = get_address_map(G)
     color_map = get_color_map(G)
     color_map["Luna Foundation Guard"] = "#E4A00C"
-    nx.set_node_attributes(G, size_map, "size")
+    size_map = dict(zip(G.nodes, [45] * len(G.nodes)))
+    size_map["Luna Foundation Guard"] = 90
+    size_map["Terraform Labs"] = 60
+
     nx.set_node_attributes(G, font_map, "font")
     nx.set_node_attributes(G, address_map, "title")
     nx.set_node_attributes(G, color_map, "color")
+    nx.set_node_attributes(G, size_map, "size")
 
     return G
 
@@ -137,7 +143,8 @@ def net_viz(G):
     vesting,
     net_data,
     gnosis,
-    # gnosis_balance,
+    eth_balances,
+    # terra_balances,
     last_ran,
 ) = load_data()
 
@@ -305,9 +312,31 @@ col3.metric(
     ),
 )
 col1, col2 = st.columns([2, 1])
-col1.caption("UST bridged to Ethereum was used to rebalance the Curve UST-3Pool by swapping for USDT\n\n**Note**: ETH data may be updated at a different time than Terra data")
+col1.caption(
+    "UST bridged to Ethereum was used to rebalance the Curve UST-3Pool by swapping for USDT\n\n**Note**: ETH data may be updated at a different time than Terra data"
+)
 col2.caption("Estimated profit/loss:\n\n`UST bridged - Gnosis Transfer Amount`")
 # st.metric()
+
+st.subheader("LFG Reserve 🏦")
+"""
+LFG has announced the creation of a BTC reserve.
+While this address isn't currently known, it will be added here at a later point.
+
+For now, the known reserve outside the LUNA ecosystem is stored in the Gnosis Safe.
+"""
+gnosis_address = "0xad41bd1cf3fd753017ef5c0da8df31a3074ea1ea"
+current_gnosis_df = eth_balances[eth_balances.USER_ADDRESS == gnosis_address][
+    eth_balances.BALANCE_DATE == eth_balances.BALANCE_DATE.max()
+][["SYMBOL", "BALANCE"]].reset_index()
+
+gnosis_currencies = len(current_gnosis_df)
+cols = st.columns(gnosis_currencies)
+for i, c in enumerate(cols):
+    c.metric(
+        f"Gnosis balance, {current_gnosis_df.iloc[i].SYMBOL}",
+        f"{current_gnosis_df.iloc[i].BALANCE:,.0f}",
+    )
 
 st.header("Discussion")
 f"""
