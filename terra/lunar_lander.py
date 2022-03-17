@@ -206,7 +206,7 @@ with st.expander("Summary", expanded=True):
         "[Vote here](https://station.terra.money/gov#PROPOSAL_STATUS_VOTING_PERIOD)"
 
 # %%
-with st.expander("Square peg, round hole? UST vs. the Peg", expanded=True):
+with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
     """
     When hourly UST is 0.5% off peg (greater than \$1.005 or less than \$0.995), it is marked in blue.
     """
@@ -276,6 +276,17 @@ with st.expander("Square peg, round hole? UST vs. the Peg", expanded=True):
     col3.metric("", get_time_off_peg(p["off_peg_high"]))
     col4.metric("", get_time_off_peg(p["off_peg_vhigh"]))
 
+
+with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
+    """New user growth, for new wallets and anchor"""
+
+
+with st.expander("Up 📈 or down 📉: Price and supply", expanded=True):
+    """LUNA price, UST supply, ..."""
+
+
+with st.expander("Sources and References 📜"):
+    ...
 
 # %%
 
