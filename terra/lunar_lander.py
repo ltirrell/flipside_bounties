@@ -37,13 +37,33 @@ def format_price(val: float, decimals=2) -> str:
     return f"${val:,.{decimals}f}"
 
 
-def get_date_range(val: str, df) -> tuple:
+def get_date_range(val: str, df: pd.DataFrame) -> pd.DataFrame:
     data_points = date_values[val]
     if data_points == -1:
         return df
     else:
         return df.iloc[:data_points]
 
+
+def get_time_off_peg(s: pd.Series) -> str:
+    total = s.sum()
+
+    if total < 72:
+        return f"{total} hr"
+    else:
+        return f"{total/24:.1f} d"
+
+def get_delta(v:float) -> str:
+    if v == 0:
+        return '😁'
+    if v <= .02:
+        return '🙂'
+    if v <= 0.05:
+        return '😐'
+    if v <= 0.1:
+        return '-😟'
+    else:
+        return '-😩'
 
 # %%
 @st.cache(ttl=3600, allow_output_mutation=True)
@@ -190,11 +210,11 @@ with st.expander("Square peg, round hole? UST vs. the Peg", expanded=True):
     """
     When hourly UST is 0.5% off peg (greater than \$1.005 or less than \$0.995), it is marked in blue.
     """
-    
+
     date_range = st.selectbox("Date range", date_values.keys(), len(date_values) - 1)
     p = price_dict[date_range]
     p_off = p.copy()
-    p_off.loc[p.off_peg==False, 'UST_PRICE'] = np.nan
+    p_off.loc[p.off_peg == False, "UST_PRICE"] = np.nan
 
     chart = (
         alt.Chart(p)
@@ -210,9 +230,7 @@ with st.expander("Square peg, round hole? UST vs. the Peg", expanded=True):
                 alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date"),
                 alt.Tooltip("UST_PRICE", title="UST Price"),
             ],
-            color=
-                alt.value("goldenrod"),
-            
+            color=alt.value("goldenrod"),
             # strokeWidth=alt.value(1)
         )
     )
@@ -231,9 +249,7 @@ with st.expander("Square peg, round hole? UST vs. the Peg", expanded=True):
                 alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date"),
                 alt.Tooltip("UST_PRICE", title="UST Price"),
             ],
-            color=
-                alt.value("#1030e3"),
-            
+            color=alt.value("#1030e3"),
             # strokeWidth=alt.value(1)
         )
     )
@@ -244,12 +260,23 @@ with st.expander("Square peg, round hole? UST vs. the Peg", expanded=True):
     """
     Percentage of time where UST is off peg by various amounts in this date range:
     """
+    lo=p['off_peg_lo'].sum()/len(p)
+    med=p['off_peg'].sum()/len(p)
+    hi=p['off_peg_high'].sum()/len(p)
+    vhi=p['off_peg_vhigh'].sum()/len(p)
+
     col1, col2, col3, col4 = st.columns(4)
-    # col.metric("Percentage off peg:", f"{p.off_peg.sum()/len(p):.2%}")
-    col1.metric("0.1% off peg:", f"{p['off_peg_lo'].sum()/len(p['off_peg_lo']):.2%}")
-    col2.metric("0.5% off peg (shown):", f"{p['off_peg'].sum()/len(p['off_peg']):.2%}")
-    col3.metric("1% off peg:", f"{p['off_peg_high'].sum()/len(p['off_peg_high']):.2%}")
-    col4.metric("2% off peg:", f"{p['off_peg_vhigh'].sum()/len(p['off_peg_vhigh']):.2%}")
+    col1.metric("0.1% off peg:", f"{lo:.2%}", get_delta(lo))
+    col2.metric("0.5% off peg (shown):", f"{med:.2%}", get_delta(med))
+    col3.metric("1% off peg:", f"{hi:.2%}", get_delta(hi))
+    col4.metric("2% off peg:", f"{vhi:.2%}", get_delta(vhi))
+
+    col1.metric("", get_time_off_peg(p["off_peg_lo"]))
+    col2.metric("", get_time_off_peg(p["off_peg"]))
+    col3.metric("", get_time_off_peg(p["off_peg_high"]))
+    col4.metric("", get_time_off_peg(p["off_peg_vhigh"]))
+
+
 # %%
 
 
