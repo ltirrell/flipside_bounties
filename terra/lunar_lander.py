@@ -57,16 +57,6 @@ def get_time_off_peg(s: pd.Series) -> str:
 # %%
 @st.cache(ttl=3600, allow_output_mutation=True)
 def load_flipside_data():
-    """
-    # Not using for now
-    # prices["UST_DAILY"] = prices.UST_PRICE.rolling(24).mean()
-    # prices["UST_WEEKLY"] = prices.UST_PRICE.rolling(24 * 7).mean()
-    # prices['UST_MONTHLY'] = prices.UST_PRICE.rolling(24*7*30).mean()
-
-    # # prices["LUNA_DAILY"] = prices.LUNA_PRICE.rolling(24).mean()
-    # prices["LUNA_WEEKLY"] = prices.LUNA_PRICE.rolling(24 * 7).mean()
-    # prices['LUNA_MONTHLY'] = prices.LUNA_PRICE.rolling(24*7*30).mean()
-    """
     q = "77bd19d6-0c7c-4ce8-83c2-e7162adf2cb4"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
     prices = pd.read_json(url)
@@ -75,18 +65,28 @@ def load_flipside_data():
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
     stables = pd.read_json(url)
 
-    p = prices[['DATETIME', 'UST_PRICE']]
-    p['SYMBOL'] = 'UST'
+    p = prices[["DATETIME", "UST_PRICE"]]
+    p["SYMBOL"] = "UST"
     p = p.rename(columns={"UST_PRICE": "PRICE"})
-    stables =pd.concat([stables, p], ignore_index=True)
+    stables = pd.concat([stables, p], ignore_index=True)
 
     price_dict = {}
     p = prices.copy().sort_values(by="DATETIME", ascending=False).reset_index(drop=True)
     for k in date_values.keys():
         v = get_date_range(k, p)
         price_dict[k] = v
-    
-    return prices, price_dict, stables
+
+    stable_dict = {}
+    s = (
+        stables.copy()
+        .sort_values(by="DATETIME", ascending=False)
+        .reset_index(drop=True)
+    )
+    for k in date_values.keys():
+        v = get_date_range(k, s)
+        stable_dict[k] = v
+
+    return price_dict, stable_dict
 
 
 # %%
@@ -158,7 +158,9 @@ def load_lcd_data():
 
 
 # %%
-prices, price_dict, stables = load_flipside_data()
+price_dict, stable_dict = load_flipside_data()
+prices = price_dict["Max"]
+stables = stable_dict["Max"]
 data = load_lcd_data()
 data["ust_price"] = prices.loc[
     prices.DATETIME == prices.DATETIME.max()
@@ -245,29 +247,6 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
             ],
         }
     )
-
-    price_chart = (
-        alt.Chart(p)
-        .mark_line()
-        .encode(
-            x=alt.X(
-                "utcyearmonthdatehours(DATETIME)",
-                title="Date",
-            ),
-            y=alt.Y(
-                "UST_PRICE",
-                title="Hourly UST Price ($)",
-                scale=alt.Scale(domain=[0.92, 1.08]),
-            ),
-            tooltip=[
-                alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date"),
-                alt.Tooltip("UST_PRICE", title="UST Price"),
-            ],
-            color=alt.value("#1030e3"),
-            # strokeWidth=alt.value(1)
-        )
-    )
-
     lower = (
         alt.Chart(lower_bands)
         .mark_rect()
@@ -338,6 +317,28 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
             ),
         )
     )
+    price_chart = (
+        alt.Chart(p)
+        .mark_line()
+        .encode(
+            x=alt.X(
+                "utcyearmonthdatehours(DATETIME)",
+                title="Date",
+            ),
+            y=alt.Y(
+                "UST_PRICE",
+                title="Hourly UST Price ($)",
+                scale=alt.Scale(domain=[p.UST_PRICE.min()*.999, p.UST_PRICE.max()*1.001]),
+            ),
+            tooltip=[
+                alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date"),
+                alt.Tooltip("UST_PRICE", title="Price (USD)"),
+            ],
+            color=alt.value("#1030e3"),
+            # strokeWidth=alt.value(1)
+        )
+    )
+
     if divergence == "UST above peg (price greater than or equal to $1)":
         chart = (price_chart + upper).interactive()
     elif divergence == "UST below peg (price less $1)":
@@ -360,11 +361,11 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
     st.subheader("Percentage of time UST has been been in range")
     description
 
-    def get_proportion_in_range(val, df, divergence):
-        price_diff = df.UST_PRICE - 1
+    def get_proportion_in_range(val, df, divergence='All data', col='UST_PRICE'):
+        price_diff = df[col] - 1
         all_off_peg = df[np.abs(price_diff) >= val]
-        below = all_off_peg[all_off_peg.UST_PRICE < 1]
-        above = all_off_peg[all_off_peg.UST_PRICE > 1]
+        below = all_off_peg[all_off_peg[col] < 1]
+        above = all_off_peg[all_off_peg[col] > 1]
 
         if divergence == "UST above peg (price greater than or equal to $1)":
             return 1 - (len(above) / len(df))
@@ -373,7 +374,7 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
         elif divergence == "All data":
             return 1 - (len(all_off_peg) / len(df))
 
-    def get_delta(v: float, divergence: str) -> str:
+    def get_delta(v: float) -> str:
 
         if v == 1:
             return "😁"
@@ -393,10 +394,10 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
     # vhi =  get_proportion_in_range(0.05, p, opposite=True)
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Within $0.005", f"{good:.2%}", get_delta(good, divergence))
-    col2.metric("Within $0.01", f"{lo:.2%}", get_delta(lo, divergence))
-    col3.metric("Within $0.02", f"{med:.2%}", get_delta(med, divergence))
-    col4.metric("Within $0.05", f"{hi:.2%}", get_delta(hi, divergence))
+    col1.metric("Within $0.005", f"{good:.2%}", get_delta(good))
+    col2.metric("Within $0.01", f"{lo:.2%}", get_delta(lo))
+    col3.metric("Within $0.02", f"{med:.2%}", get_delta(med))
+    col4.metric("Within $0.05", f"{hi:.2%}", get_delta(hi))
     st.caption("The emoji is happier when more time is spent close to the $1 peg.")
 
     chart = (
@@ -413,28 +414,177 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
             alt.Y("sum(pct):Q", axis=alt.Axis(format="%"), title="Percentage"),
             tooltip=[
                 # alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date"),
-                alt.Tooltip("UST_PRICE", title="UST Price", bin=alt.Bin(extent=[0.97, 1.03], step=0.001),),
+                alt.Tooltip(
+                    "UST_PRICE",
+                    title="UST Price",
+                    bin=alt.Bin(extent=[0.95, 1.05], step=0.005),
+                ),
                 alt.Tooltip("sum(pct):Q", title="Percentage"),
             ],
             color=alt.value("#1030e3"),
         )
     ).interactive()
-    col1, col2 = st.columns([2,1])
+    col1, col2 = st.columns([2, 1])
     col1.altair_chart((chart), use_container_width=True)
     col2.metric("Median Price", f"{p.UST_PRICE.median():.3f}")
     col2.metric("Minimum Price", f"{p.UST_PRICE.min():.3f}")
     col2.metric("Max Price", f"{p.UST_PRICE.max():.3f}")
 
-    # chart2 = (
-    #     alt.Chart(p)
-    #     .mark_bar()
-    #     .encode(
-    #         alt.X("UST_PRICE", bin=alt.Bin(extent=[.92, 1.08], step=0.0032)),
-    #         y="count()",
-    #     )
-    # )
-    # col1.altair_chart(chart, use_container_width=True)
+# %%
 
+    st.subheader("UST compared to other stablecoins")
+
+    "Pricing information for other top stablecoins is below, for the same date range. Percentage of time within $0.005 of the peg is also shown."
+    s = stable_dict[date_range]
+
+    base = alt.Chart(s).encode(x=alt.X("utcyearmonthdatehours(DATETIME):T", title='Date'))
+    columns = sorted(s.SYMBOL.unique())
+    selection = alt.selection_single(
+        fields=["utcyearmonthdatehours(DATETIME)"], nearest=True, on="mouseover", empty="none", clear="mouseout"
+    )
+
+    lines = base.mark_line().encode(
+        y=alt.Y(
+            "PRICE",
+            title="Hourly Price ($)",
+            scale=alt.Scale(domain=[s.PRICE.min()*.999, s.PRICE.max()*1.001]),
+        ),
+        color="SYMBOL:N",
+    )
+    points = lines.mark_point().transform_filter(selection)
+
+    rule = (
+        base.transform_pivot("SYMBOL", value="PRICE", groupby=["DATETIME"])
+        .mark_rule()
+        .encode(
+            opacity=alt.condition(selection, alt.value(0.3), alt.value(0)),
+            tooltip=[alt.Tooltip(c, type="quantitative") for c in columns],
+        )
+        .add_selection(selection)
+    )
+    chart = (lines + points + rule ).interactive()
+    col1,col2 = st.columns([3,1])
+    col1.altair_chart(chart, use_container_width=True)
+    col1.caption("Stablecoin prices")
+
+    
+    for i,c in enumerate(columns):
+        if i > 3:
+            i -= 3
+        d = s[s.SYMBOL==c]
+        result = get_proportion_in_range(0.005, d, col='PRICE')
+        col2.metric(f"{c}: within $0.005", f"{result:.2%}", get_delta(result))
+
+    s['DAILY_MOVING'] = s.groupby('SYMBOL')['PRICE'].transform(lambda x: x.rolling(24*7,1 ).mean())
+
+
+    base = alt.Chart(s).encode(x=alt.X("utcyearmonthdatehours(DATETIME):T", title='Date'))
+    columns = sorted(s.SYMBOL.unique())
+    selection = alt.selection_single(
+        fields=["utcyearmonthdatehours(DATETIME)"], nearest=True, on="mouseover", empty="none", clear="mouseout"
+    )
+
+    lines = base.mark_line().encode(
+        y=alt.Y(
+            "DAILY_MOVING",
+            title="Hourly Price ($)",
+            scale=alt.Scale(domain=[s.DAILY_MOVING.min()*.999, s.DAILY_MOVING.max()*1.001]),
+        ),
+        color="SYMBOL:N",
+    )
+    points = lines.mark_point().transform_filter(selection)
+
+    rule = (
+        base.transform_pivot("SYMBOL", value="DAILY_MOVING", groupby=["DATETIME"])
+        .mark_rule()
+        .encode(
+            opacity=alt.condition(selection, alt.value(0.3), alt.value(0)),
+            tooltip=[alt.Tooltip(c, type="quantitative") for c in columns],
+        )
+        .add_selection(selection)
+    )
+    chart = (lines + points + rule ).interactive()
+    col1.altair_chart(chart, use_container_width=True)
+    col1.caption("Weekly rolling average")
+    # s2 = s[s.SYMBOL!='UST']
+    # s2.index=s2.DATETIME
+    # ust = s[s.SYMBOL=='UST']
+    # ust.index=ust.DATETIME
+    # ust=ust.dropna()
+    # diff = ust.PRICE - s2.PRICE
+    # s2 = s2.merge(diff, left_index=True, right_index=True)
+
+    #     good = get_proportion_in_range(0.005, p, divergence)
+    # lo = get_proportion_in_range(0.01, p, divergence)
+    # med = get_proportion_in_range(0.02, p, divergence)
+    # hi = get_proportion_in_range(0.05, p, divergence)
+    # # vhi =  get_proportion_in_range(0.05, p, opposite=True)
+
+    # col1, col2, col3, col4 = st.columns(4)
+    # col1.metric("Within $0.005", f"{good:.2%}", get_delta(good))
+    # col2.metric("Within $0.01", f"{lo:.2%}", get_delta(lo))
+    # col3.metric("Within $0.02", f"{med:.2%}", get_delta(med))
+    # col4.metric("Within $0.05", f"{hi:.2%}", get_delta(hi))
+# nearest = alt.selection(type='single', nearest=True, on='mouseover',
+#                         fields=["DATETIME"], empty='none')
+# line = (
+#     alt.Chart(s)
+#     .mark_line()
+#     .encode(
+#         x=alt.X(
+#             "DATETIME",
+#             title="Date",
+#         ),
+#         y=alt.Y(
+#             "PRICE",
+#             title="Hourly Price ($)",
+#             scale=alt.Scale(domain=[0.92, 1.08]),
+#         ),
+#         # tooltip=[
+#         #     alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date"),
+#         #     alt.Tooltip("SYMBOL", title="Symbol"),
+#         #     alt.Tooltip("PRICE", title="Price"),
+
+#         # ],
+#         color="SYMBOL",
+#         # strokeWidth=alt.value(1)
+#     )
+# )
+# # Transparent selectors across the chart. This is what tells us
+# # the x-value of the cursor
+# selectors = alt.Chart(s).mark_point().encode(
+#     x= "DATETIME",
+#     opacity=alt.value(0),
+# ).add_selection(
+#     nearest
+# )
+
+# # Draw points on the line, and highlight based on selection
+# points = line.mark_point().encode(
+#     opacity=alt.condition(nearest, alt.value(1), alt.value(0))
+# )
+
+# # Draw text labels near the points, and highlight based on selection
+# text = line.mark_text(align='left', dx=5, dy=-5).encode(
+#     text=alt.condition(nearest, 'PRICE', alt.value(' '))
+# )
+
+# # Draw a rule at the location of the selection
+# rules = alt.Chart(s).mark_rule(color='gray').encode(
+#     x= "DATETIME",
+# ).transform_filter(
+#     nearest
+# )
+
+# # Put the five layers into a chart and bind the data
+# chart = alt.layer(
+#     line, selectors, points, rules, text
+# ).interactive()
+
+
+
+
+# %%
 
 # %%
 with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
@@ -520,3 +670,12 @@ with st.expander("Sources and References 📜"):
 # col1.metric("", get_time_off_peg(p["off_peg"]))
 # col2.metric("", get_time_off_peg(p["off_peg_high"]))
 # col3.metric("", get_time_off_peg(p["off_peg_vhigh"]))
+
+# Not using for now
+# prices["UST_DAILY"] = prices.UST_PRICE.rolling(24).mean()
+# prices["UST_WEEKLY"] = prices.UST_PRICE.rolling(24 * 7).mean()
+# prices['UST_MONTHLY'] = prices.UST_PRICE.rolling(24*7*30).mean()
+
+# # prices["LUNA_DAILY"] = prices.LUNA_PRICE.rolling(24).mean()
+# prices["LUNA_WEEKLY"] = prices.LUNA_PRICE.rolling(24 * 7).mean()
+# prices['LUNA_MONTHLY'] = prices.LUNA_PRICE.rolling(24*7*30).mean()
