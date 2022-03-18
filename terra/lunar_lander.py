@@ -496,7 +496,10 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
         .encode(
             alt.X(
                 "UST_PRICE",
-                bin=alt.Bin(extent=[0.95, 1.05], step=0.005),
+                bin=alt.Bin(
+                    extent=[p.UST_PRICE.min() * 0.999, p.UST_PRICE.max() * 1.001],
+                    step=0.001,
+                ),
                 title="UST Price (binned)",
             ),
             alt.Y("sum(pct):Q", axis=alt.Axis(format="%"), title="Percentage"),
@@ -505,7 +508,10 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
                 alt.Tooltip(
                     "UST_PRICE",
                     title="UST Price",
-                    bin=alt.Bin(extent=[0.95, 1.05], step=0.005),
+                    bin=alt.Bin(
+                        extent=[p.UST_PRICE.min() * 0.999, p.UST_PRICE.max() * 1.001],
+                        step=0.001,
+                    ),
                 ),
                 alt.Tooltip("sum(pct):Q", title="Percentage"),
             ],
@@ -518,115 +524,47 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
     col2.metric("Minimum Price", f"{p.UST_PRICE.min():.3f}")
     col2.metric("Max Price", f"{p.UST_PRICE.max():.3f}")
 
-    # %%
-
-    st.subheader("UST compared to other stablecoins")
-
-    "UST can be compared to other stablecoins below"
-
-    date_range = st.selectbox("Date range", date_values.keys(), len(date_values) - 4)
-    price_range = st.selectbox(
-        "Price range", [0.005, 0.01, 0.02, 0.05], 0, format_func=lambda x: f"${x}"
-    )
-    s = stable_dict[date_range]
-
-    #     divergence = st.radio(
-    #     "Choose price range for analysis:",
-    #     [
-    #         "All data",
-    #         "UST above peg (price greater than or equal to $1)",
-    #         "UST below peg (price less $1)",
-    #     ],
-    #     0,
-    # )
-
-    base = alt.Chart(s).encode(
-        x=alt.X("utcyearmonthdatehours(DATETIME):T", title="Date")
-    )
-    columns = sorted(s.SYMBOL.unique())
-    selection = alt.selection_single(
-        fields=["utcyearmonthdatehours(DATETIME)"],
-        nearest=True,
-        on="mouseover",
-        empty="none",
-        clear="mouseout",
-    )
-
-    lines = base.mark_line().encode(
-        y=alt.Y(
-            "PRICE",
-            title="Hourly Price ($)",
-            scale=alt.Scale(domain=[s.PRICE.min() * 0.999, s.PRICE.max() * 1.001]),
-        ),
-        color=alt.Color("SYMBOL:N", scale=alt.Scale(scheme="tableau10")),
-    )
-    points = lines.mark_point().transform_filter(selection)
-
-    rule = (
-        base.transform_pivot("SYMBOL", value="PRICE", groupby=["DATETIME"])
-        .mark_rule()
-        .encode(
-            opacity=alt.condition(selection, alt.value(0.3), alt.value(0)),
-            tooltip=[alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date")]
-            + [alt.Tooltip(c, type="quantitative") for c in columns],
-        )
-        .add_selection(selection)
-    )
-    chart = (lines + points + rule).interactive()
-    col1, col2 = st.columns([3, 1])
-    col1.altair_chart(chart, use_container_width=True)
-    col1.caption("Stablecoin prices")
-
-    for i, c in enumerate(columns):
-        if i > 3:
-            i -= 3
-        d = s[s.SYMBOL == c]
-        result = get_proportion_in_range(price_range, d, col="PRICE")
-        col2.metric(f"{c}: within ${price_range}", f"{result:.2%}", get_delta(result))
-
-    s["DAILY_MOVING"] = s.groupby("SYMBOL")["PRICE"].transform(
-        lambda x: x.rolling(24 * 7, 1).mean()
-    )
-
-    base = alt.Chart(s).encode(
-        x=alt.X("utcyearmonthdatehours(DATETIME):T", title="Date")
-    )
-    columns = sorted(s.SYMBOL.unique())
-    selection = alt.selection_single(
-        fields=["utcyearmonthdatehours(DATETIME)"],
-        nearest=True,
-        on="mouseover",
-        empty="none",
-        clear="mouseout",
-    )
-
-    lines = base.mark_line().encode(
-        y=alt.Y(
-            "DAILY_MOVING",
-            title="Hourly Price ($)",
-            scale=alt.Scale(
-                domain=[s.DAILY_MOVING.min() * 0.999, s.DAILY_MOVING.max() * 1.001]
-            ),
-        ),
-        color=alt.Color("SYMBOL:N", scale=alt.Scale(scheme="tableau10")),
-    )
-    points = lines.mark_point().transform_filter(selection)
-
-    rule = (
-        base.transform_pivot("SYMBOL", value="DAILY_MOVING", groupby=["DATETIME"])
-        .mark_rule()
-        .encode(
-            opacity=alt.condition(selection, alt.value(0.3), alt.value(0)),
-            tooltip=[alt.Tooltip(c, type="quantitative") for c in columns],
-        )
-        .add_selection(selection)
-    )
-    chart = (lines + points + rule).interactive()
-    col1.altair_chart(chart, use_container_width=True)
-    col1.caption("Weekly rolling average")
-
 
 # %%
+with st.expander("Supply and Demand 📈", expanded=True):
+    st.header("UST Supply and LUNA price")
+    col1, col2 = st.columns([4, 2])
+    col1.write("LUNA is burned to create UST, increasing the scarcity of LUNA.")
+    corr = kendalltau(ust_supply.PRICE, ust_supply.TOTAL_BALANCE)
+    col2.metric("UST Supply - LUNA price correlation", f"{corr.correlation:.2f}")
+
+    base = alt.Chart(ust_supply).encode(x=alt.X("DATE:T", title=""))
+    area = (
+        base.mark_area(color="#1030e3")
+        .encode(
+            y=alt.Y(
+                "TOTAL_BALANCE:Q",
+                title="UST Supply",
+            ),
+            tooltip=[
+                alt.Tooltip("DATE:T", title="Date"),
+                alt.Tooltip("TOTAL_BALANCE", title="UST Supply", format=",.2f"),
+            ],
+        )
+        .interactive()
+    )
+    line = (
+        base.mark_line(stroke="goldenrod")
+        .encode(
+            y=alt.Y(
+                "PRICE:Q",
+                title="LUNA Price (USD)",
+            ),
+            tooltip=[
+                alt.Tooltip("DATE:T", title="Date"),
+                alt.Tooltip("TOTAL_BALANCE", title="UST Supply", format=",.2f"),
+            ],
+        )
+        .interactive()
+    )
+    chart = alt.layer(area, line).resolve_scale(y="independent")
+    st.altair_chart(chart, use_container_width=True)
+
 
 # %%
 with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
@@ -739,44 +677,99 @@ with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
     )
 
 # %%
-with st.expander("Supply and Demand 📈", expanded=True):
-    st.header("UST Supply and LUNA price")
-    col1, col2 = st.columns([4, 2])
-    col1.write("LUNA is burned to create UST, increasing the scarcity of LUNA.")
-    corr = kendalltau(ust_supply.PRICE, ust_supply.TOTAL_BALANCE)
-    col2.metric("UST Supply - LUNA price correlation", f"{corr.correlation:.2f}")
+with st.expander("The Stablest?", expanded=True):
+    st.subheader("UST compared to other stablecoins")
 
-    base = alt.Chart(ust_supply).encode(x=alt.X("DATE:T", title=""))
-    area = (
-        base.mark_area(color="#1030e3")
-        .encode(
-            y=alt.Y(
-                "TOTAL_BALANCE:Q",
-                title="UST Supply",
-            ),
-            tooltip=[
-                alt.Tooltip("DATE:T", title="Date"),
-                alt.Tooltip("TOTAL_BALANCE", title="UST Supply", format=",.2f"),
-            ],
-        )
-        .interactive()
+    "UST can be compared to other stablecoins below"
+
+    date_range = st.selectbox("Date range", date_values.keys(), len(date_values) - 4)
+    price_range = st.selectbox(
+        "Price range", [0.005, 0.01, 0.02, 0.05], 0, format_func=lambda x: f"${x}"
     )
-    line = (
-        base.mark_line(stroke="goldenrod")
-        .encode(
-            y=alt.Y(
-                "PRICE:Q",
-                title="LUNA Price (USD)",
-            ),
-            tooltip=[
-                alt.Tooltip("DATE:T", title="Date"),
-                alt.Tooltip("TOTAL_BALANCE", title="UST Supply", format=",.2f"),
-            ],
-        )
-        .interactive()
+    s = stable_dict[date_range]
+
+    base = alt.Chart(s).encode(
+        x=alt.X("utcyearmonthdatehours(DATETIME):T", title="Date")
     )
-    chart = alt.layer(area, line).resolve_scale(y="independent")
-    st.altair_chart(chart, use_container_width=True)
+    columns = sorted(s.SYMBOL.unique())
+    selection = alt.selection_single(
+        fields=["utcyearmonthdatehours(DATETIME)"],
+        nearest=True,
+        on="mouseover",
+        empty="none",
+        clear="mouseout",
+    )
+
+    lines = base.mark_line().encode(
+        y=alt.Y(
+            "PRICE",
+            title="Hourly Price ($)",
+            scale=alt.Scale(domain=[s.PRICE.min() * 0.999, s.PRICE.max() * 1.001]),
+        ),
+        color=alt.Color("SYMBOL:N", scale=alt.Scale(scheme="tableau10")),
+    )
+    points = lines.mark_point().transform_filter(selection)
+
+    rule = (
+        base.transform_pivot("SYMBOL", value="PRICE", groupby=["DATETIME"])
+        .mark_rule()
+        .encode(
+            opacity=alt.condition(selection, alt.value(0.3), alt.value(0)),
+            tooltip=[alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date")]
+            + [alt.Tooltip(c, type="quantitative") for c in columns],
+        )
+        .add_selection(selection)
+    )
+    chart = (lines + points + rule).interactive()
+    col1, col2 = st.columns([3, 1])
+    col1.altair_chart(chart, use_container_width=True)
+    col1.caption("Stablecoin prices")
+
+    for c in columns:
+        d = s[s.SYMBOL == c]
+        result = get_proportion_in_range(price_range, d, col="PRICE")
+        col2.metric(f"{c}: within ${price_range}", f"{result:.2%}", get_delta(result))
+
+    s["WEEKLY_MOVING"] = s.groupby("SYMBOL")["PRICE"].transform(
+        lambda x: x.rolling(24 * 7, 1).mean()
+    )
+
+    base = alt.Chart(s).encode(
+        x=alt.X("utcyearmonthdatehours(DATETIME):T", title="Date")
+    )
+    columns = sorted(s.SYMBOL.unique())
+    selection = alt.selection_single(
+        fields=["utcyearmonthdatehours(DATETIME)"],
+        nearest=True,
+        on="mouseover",
+        empty="none",
+        clear="mouseout",
+    )
+
+    lines = base.mark_line().encode(
+        y=alt.Y(
+            "WEEKLY_MOVING",
+            title="Hourly Price ($)",
+            scale=alt.Scale(
+                domain=[s.WEEKLY_MOVING.min() * 0.999, s.WEEKLY_MOVING.max() * 1.001]
+            ),
+        ),
+        color=alt.Color("SYMBOL:N", scale=alt.Scale(scheme="tableau10")),
+    )
+    points = lines.mark_point().transform_filter(selection)
+
+    rule = (
+        base.transform_pivot("SYMBOL", value="WEEKLY_MOVING", groupby=["DATETIME"])
+        .mark_rule()
+        .encode(
+            opacity=alt.condition(selection, alt.value(0.3), alt.value(0)),
+            tooltip=[alt.Tooltip(c, type="quantitative") for c in columns],
+        )
+        .add_selection(selection)
+    )
+    chart = (lines + points + rule).interactive()
+    col1.altair_chart(chart, use_container_width=True)
+    col1.caption("Weekly rolling average")
 
 # %%
 with st.expander("LFG! 🌝", expanded=True):
