@@ -369,7 +369,7 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
         elif divergence =='UST below peg':
             return len(df[(price_diff <=0) & (np.abs(price_diff) <= val)])/len(df[price_diff <=0])
         elif divergence == "Both":
-            return len(df[np.abs(price_diff) <= val]/len(df))
+            return len(df[np.abs(price_diff) <= val])/len(df)
 
     def get_delta(v: float) -> str:
         if v == 1:
