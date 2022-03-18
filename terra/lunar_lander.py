@@ -8,7 +8,7 @@ import pandas as pd
 from pyvis.network import Network
 from PIL import Image
 import requests
-from scipy.stats import spearmanr
+from scipy.stats import kendalltau
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -743,7 +743,7 @@ with st.expander("Supply and Demand 📈", expanded=True):
     st.header("UST Supply and LUNA price")
     col1, col2 = st.columns([4, 2])
     col1.write("LUNA is burned to create UST, increasing the scarcity of LUNA.")
-    corr = spearmanr(ust_supply.PRICE, ust_supply.TOTAL_BALANCE)
+    corr = kendalltau(ust_supply.PRICE, ust_supply.TOTAL_BALANCE)
     col2.metric("UST Supply - LUNA price correlation", f"{corr.correlation:.2f}")
 
     base = alt.Chart(ust_supply).encode(x=alt.X("DATE:T", title=""))
@@ -898,7 +898,7 @@ with st.expander("LFG! 🌝", expanded=True):
 # %%
 with st.expander("Sources and References 📜"):
     st.header("Data Sources")
-    """
+    f"""
     All data besides the Summary section comes from queries made on [Flipside Crypto](app.flipsidecrypto.com).
     The Summary section uses realtime data for all its metrics *except* for UST price and LUNA staking yield.
 
@@ -906,6 +906,8 @@ with st.expander("Sources and References 📜"):
 
     Flipside data is updated is queried hourly (for more real time metrics) or daily (for daily metrics).
     There is some delay between events occurring on chain and ingestion into their database, so their might be some lag in results.
+
+    Luna - UST Supply correlation was calulated using Kendall's Tau (correlation: {corr.correlation:.2f}, pvalue={corr.pvalue:.3f})
     """
     st.subheader("Realtime data")
     f"""
