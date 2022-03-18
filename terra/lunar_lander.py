@@ -209,12 +209,12 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
     # """
     divergence = st.radio(
         "Choose price range for analysis:",
-        [
-            "UST above peg (price greater than or equal to $1 only)",
-            "UST below peg (price less than or equal to $1 only)",
-            "Both",
+        [   "All data",
+            "UST above peg (price greater than or equal to $1)",
+            "UST below peg (price less $1)",
+            
         ],
-        2,
+        0,
     )
     date_range = st.selectbox("Date range", date_values.keys(), len(date_values) - 1)
     p = price_dict[date_range]
@@ -338,11 +338,11 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
             ),
         )
     )
-    if divergence == "UST above peg (price greater than or equal to $1 only)":
+    if divergence == "UST above peg (price greater than or equal to $1)":
         chart = (price_chart + upper).interactive()
-    elif divergence == "UST below peg (price less than or equal to $1 only)":
+    elif divergence == "UST below peg (price less $1)":
         chart = (price_chart + lower).interactive()
-    elif divergence == "Both":
+    elif divergence == "All data":
         chart = (price_chart + lower + upper).interactive()
     st.altair_chart(chart, use_container_width=True)
 
@@ -350,40 +350,39 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
     # """
     # Percentage of time in each range of UST Peg Stability for this date range:
     # """
-    if divergence == "UST above peg (price greater than or equal to $1 only)":
-        description = "Only when UST price **greater than or equal to $1**:"
-    elif divergence == "UST below peg (price less than or equal to $1 only)":
-        description = "Only when UST price **less than or equal to $1**:"
-    elif divergence == "Both":
-        description = "All data in date range:"
+    if divergence == "UST above peg (price greater than or equal to $1)":
+        description = "Only when UST price **greater than or equal to $1**."
+    elif divergence == "UST below peg (price less $1)":
+        description = "Only when UST price **less than $1**."
+    elif divergence == "All data":
+        description = "All data in date range. The emoji is happier wehn more time is spend close to the peg."
     st.subheader("Percentage of time UST has been been in range")
     description
 
     def get_proportion_in_range(val, df, divergence):
         price_diff = df.UST_PRICE - 1
 
-        if divergence == "UST above peg (price greater than or equal to $1 only)":
-            return len(df[(price_diff >= 0) & (np.abs(price_diff) <= val)]) / len(
-                df[price_diff >= 0]
-            )
-        elif divergence == "UST below peg (price less than or equal to $1 only)":
-            return len(df[(price_diff <= 0) & (np.abs(price_diff) <= val)]) / len(
-                df[price_diff <= 0]
-            )
-        elif divergence == "Both":
+        if divergence == "UST above peg (price greater than or equal to $1)":
+            return len(df[(price_diff >= 0) & (np.abs(price_diff) <= val)]) / len(df)
+        elif divergence == "UST below peg (price less $1)":
+            return len(df[(price_diff < 0) & (np.abs(price_diff) <= val)]) / len(df)
+        elif divergence == "All data":
             return len(df[np.abs(price_diff) <= val]) / len(df)
 
-    def get_delta(v: float) -> str:
-        if v == 1:
-            return "😁"
-        if v >= 0.95:
-            return "🙂"
-        if v >= 0.9:
-            return "-😐"
-        if v >= 0.85:
-            return "-😟"
+    def get_delta(v: float, divergence: str) -> str:
+        if divergence == "All data":
+            if v == 1:
+                return "😁"
+            if v >= 0.95:
+                return "🙂"
+            if v >= 0.9:
+                return "-😐"
+            if v >= 0.85:
+                return "-😟"
+            else:
+                return "-😩"
         else:
-            return "-😩"
+            return ""
 
     good = get_proportion_in_range(0.005, p, divergence)
     lo = get_proportion_in_range(0.01, p, divergence)
@@ -392,10 +391,10 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
     # vhi =  get_proportion_in_range(0.05, p, opposite=True)
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Within $0.005", f"{good:.2%}", get_delta(good))
-    col2.metric("Within $0.01", f"{lo:.2%}", get_delta(lo))
-    col3.metric("Within $0.02", f"{med:.2%}", get_delta(med))
-    col4.metric("Within $0.05", f"{hi:.2%}", get_delta(hi))
+    col1.metric("Within $0.005", f"{good:.2%}", get_delta(good, divergence))
+    col2.metric("Within $0.01", f"{lo:.2%}", get_delta(lo, divergence))
+    col3.metric("Within $0.02", f"{med:.2%}", get_delta(med, divergence))
+    col4.metric("Within $0.05", f"{hi:.2%}", get_delta(hi, divergence))
     # col5.metric("More than $0.05", f"{vhi:.2%}", get_delta(vhi))
 
     # col1, col2, col3, col4 = st.columns(4)
