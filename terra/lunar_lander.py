@@ -53,37 +53,40 @@ def get_time_off_peg(s: pd.Series) -> str:
     else:
         return f"{total/24:.1f} d"
 
-def get_delta(v:float) -> str:
-    if v == 0:
-        return '😁'
-    if v <= .02:
-        return '🙂'
-    if v <= 0.05:
-        return '😐'
-    if v <= 0.1:
-        return '-😟'
-    else:
-        return '-😩'
+
 
 # %%
 @st.cache(ttl=3600, allow_output_mutation=True)
 def load_flipside_data():
+    """
+    # Not using for now
+    # prices["UST_DAILY"] = prices.UST_PRICE.rolling(24).mean()
+    # prices["UST_WEEKLY"] = prices.UST_PRICE.rolling(24 * 7).mean()
+    # prices['UST_MONTHLY'] = prices.UST_PRICE.rolling(24*7*30).mean()
+
+    # # prices["LUNA_DAILY"] = prices.LUNA_PRICE.rolling(24).mean()
+    # prices["LUNA_WEEKLY"] = prices.LUNA_PRICE.rolling(24 * 7).mean()
+    # prices['LUNA_MONTHLY'] = prices.LUNA_PRICE.rolling(24*7*30).mean()
+    """
     q = "77bd19d6-0c7c-4ce8-83c2-e7162adf2cb4"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
     prices = pd.read_json(url)
 
-    prices["UST_DAILY"] = prices.UST_PRICE.rolling(24).mean()
-    prices["UST_WEEKLY"] = prices.UST_PRICE.rolling(24 * 7).mean()
-    # prices['UST_MONTHLY'] = prices.UST_PRICE.rolling(24*7*30).mean()
+    q = "69a171bd-0db3-44e0-9526-93692270d081"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    stables = pd.read_json(url)
 
-    prices["LUNA_DAILY"] = prices.LUNA_PRICE.rolling(24).mean()
-    prices["LUNA_WEEKLY"] = prices.LUNA_PRICE.rolling(24 * 7).mean()
-    # prices['LUNA_MONTHLY'] = prices.LUNA_PRICE.rolling(24*7*30).mean()
+    prices["$0.005"] = (prices.UST_PRICE <= 0.995) | (prices.UST_PRICE >= 1.005)
+    prices["$0.01"] = (prices.UST_PRICE <= 0.99) | (prices.UST_PRICE >= 1.01)
+    prices["$0.02"] = (prices.UST_PRICE <= 0.98) | (prices.UST_PRICE >= 1.02)
+    prices["$0.05 or more"] = (prices.UST_PRICE <= 0.95) | (prices.UST_PRICE >= 1.05)
+    # prices["More than $0.05"] = (prices.UST_PRICE < 0.98) | (prices.UST_PRICE > 1.08)
 
-    prices["off_peg"] = (prices.UST_PRICE < 0.995) | (prices.UST_PRICE > 1.005)
-    prices["off_peg_lo"] = (prices.UST_PRICE < 0.999) | (prices.UST_PRICE > 1.001)
-    prices["off_peg_high"] = (prices.UST_PRICE < 0.99) | (prices.UST_PRICE > 1.01)
-    prices["off_peg_vhigh"] = (prices.UST_PRICE < 0.98) | (prices.UST_PRICE > 1.08)
+    
+
+
+
+
 
     price_dict = {}
     p = prices.copy().sort_values(by="DATETIME", ascending=False).reset_index(drop=True)
@@ -207,39 +210,49 @@ with st.expander("Summary", expanded=True):
 
 # %%
 with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
+    st.header("UST Peg Stability")
     """
     When hourly UST is 0.5% off peg (greater than \$1.005 or less than \$0.995), it is marked in blue.
     """
-
+    divergence = st.radio("Analysis for:", ["UST above peg", 'UST below peg', "Both"], 2)
     date_range = st.selectbox("Date range", date_values.keys(), len(date_values) - 1)
     p = price_dict[date_range]
-    p_off = p.copy()
-    p_off.loc[p.off_peg == False, "UST_PRICE"] = np.nan
 
-    chart = (
+    lower_bands = pd.DataFrame(
+        {
+            "value1": [1, 0.995, 0.99, 0.98, 0.95],
+            "value2": [0.995, 0.99, 0.98, 0.95, 0.92],
+            "type": [
+                "Within $0.005",
+                "Within $0.01",
+                "Within $0.02",
+                "Within $0.05",
+                "Greater than $0.05",
+            ],
+        }
+    )
+    upper_bands = pd.DataFrame(
+        {
+            "value1": [1, 1.005, 1.01, 1.02, 1.05],
+            "value2": [1.005, 1.01, 1.02, 1.05, 1.08],
+            "type": [
+                "Within $0.005",
+                "Within $0.01",
+                "Within $0.02",
+                "Within $0.05",
+                "Greater than $0.05",
+            ],
+        }
+    )
+
+    price_chart = (
         alt.Chart(p)
         .mark_line()
         .encode(
-            x=alt.X("utcyearmonthdatehours(DATETIME)", title=""),
-            y=alt.Y(
-                "UST_PRICE",
-                title="Hourly UST Price ($)",
-                scale=alt.Scale(domain=[0.92, 1.08]),
+            x=alt.X(
+                "utcyearmonthdatehours(DATETIME)",
+                title="",
             ),
-            tooltip=[
-                alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date"),
-                alt.Tooltip("UST_PRICE", title="UST Price"),
-            ],
-            color=alt.value("goldenrod"),
-            # strokeWidth=alt.value(1)
-        )
-    )
-
-    chart2 = (
-        alt.Chart(p_off)
-        .mark_line(point=True)
-        .encode(
-            x=alt.X("utcyearmonthdatehours(DATETIME)", title=""),
             y=alt.Y(
                 "UST_PRICE",
                 title="Hourly UST Price ($)",
@@ -253,38 +266,158 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
             # strokeWidth=alt.value(1)
         )
     )
-    layered = (chart + chart2).interactive().configure_point(size=18)
 
-    st.altair_chart(layered, use_container_width=True)
+    lower = (
+        alt.Chart(lower_bands)
+        .mark_rect()
+        .encode(
+            y=alt.Y("value1"),
+            y2="value2",
+            color=alt.Color(
+                "type",
+                scale=alt.Scale(
+                    domain=[
+                        "Within $0.005",
+                        "Within $0.01",
+                        "Within $0.02",
+                        "Within $0.05",
+                        "Greater than $0.05",
+                    ],
+                    scheme="turbo",
+                ),
+                legend=alt.Legend(title="UST Peg Stability"),
+            ),
+            opacity=alt.Opacity(
+                "type",
+                scale=alt.Scale(
+                    domain=[
+                        "Within $0.005",
+                        "Within $0.01",
+                        "Within $0.02",
+                        "Within $0.05",
+                        "Greater than $0.05",
+                    ],
+                    range=[0.3, 0.5, 0.5, 0.6, 0.7],
+                ),
+            ),
+        )
+    )
+    upper = (
+        alt.Chart(upper_bands)
+        .mark_rect()
+        .encode(
+            y=alt.Y("value1"),
+            y2="value2",
+            color=alt.Color(
+                "type",
+                scale=alt.Scale(
+                    domain=[
+                        "Within $0.005",
+                        "Within $0.01",
+                        "Within $0.02",
+                        "Within $0.05",
+                        "Greater than $0.05",
+                    ],
+                    scheme="turbo",
+                ),
+                legend=alt.Legend(title="UST Peg Stability"),
+            ),
+            opacity=alt.Opacity(
+                "type",
+                scale=alt.Scale(
+                    domain=[
+                        "Within $0.005",
+                        "Within $0.01",
+                        "Within $0.02",
+                        "Within $0.05",
+                        "Greater than $0.05",
+                    ],
+                    range=[0.3, 0.5, 0.5, 0.6, 0.7],
+                ),
+            ),
+        )
+    )
+    if divergence == "UST above peg":
+        chart = (price_chart + upper).interactive()
+    elif divergence =='UST below peg':
+        chart = (price_chart + lower).interactive()
+    elif divergence == "Both":
+        chart = (price_chart + lower + upper).interactive()
+    st.altair_chart(chart, use_container_width=True)
 
-    """
-    Percentage of time where UST is off peg by various amounts in this date range:
-    """
-    lo=p['off_peg_lo'].sum()/len(p)
-    med=p['off_peg'].sum()/len(p)
-    hi=p['off_peg_high'].sum()/len(p)
-    vhi=p['off_peg_vhigh'].sum()/len(p)
+# %%
+    # """
+    # Percentage of time in each range of UST Peg Stability for this date range:
+    # """
+    if divergence == "UST above peg":
+        description = "Percentage of time UST has been been in range, above peg only:"
+    elif divergence =='UST below peg':
+        description = "Percentage of time UST has beenin range, below peg only:"
+    elif divergence == "Both":
+        description = "Percentage of time UST has been in range:"
+    st.subheader(description)
+
+
+    def get_proportion_in_range(val, df, divergence):
+        price_diff = df.UST_PRICE-1
+
+        # df[(price_diff >=0) & price_diff <= val]
+
+
+        if divergence == "UST above peg":
+            return len(df[(price_diff >=0) & (np.abs(price_diff) <= val)])/len(df[price_diff >=0])
+        elif divergence =='UST below peg':
+            return len(df[(price_diff <=0) & (np.abs(price_diff) <= val)])/len(df[price_diff <=0])
+        elif divergence == "Both":
+            return len(df[np.abs(price_diff) <= val]/len(df))
+
+    def get_delta(v: float) -> str:
+        if v == 1:
+            return "😁"
+        if v >= 0.95:
+            return "🙂"
+        if v >= 0.9:
+            return "-😐"
+        if v >= 0.85:
+            return "-😟"
+        else:
+            return "-😩"
+
+
+
+    good = get_proportion_in_range(0.005, p, divergence)
+    lo = get_proportion_in_range(0.01, p, divergence)
+    med =  get_proportion_in_range(0.02, p, divergence)
+    hi =  get_proportion_in_range(0.05, p, divergence)
+    # vhi =  get_proportion_in_range(0.05, p, opposite=True)
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("0.1% off peg:", f"{lo:.2%}", get_delta(lo))
-    col2.metric("0.5% off peg (shown):", f"{med:.2%}", get_delta(med))
-    col3.metric("1% off peg:", f"{hi:.2%}", get_delta(hi))
-    col4.metric("2% off peg:", f"{vhi:.2%}", get_delta(vhi))
-
-    col1.metric("", get_time_off_peg(p["off_peg_lo"]))
-    col2.metric("", get_time_off_peg(p["off_peg"]))
-    col3.metric("", get_time_off_peg(p["off_peg_high"]))
-    col4.metric("", get_time_off_peg(p["off_peg_vhigh"]))
+    col1.metric("Within $0.005", f"{good:.3%}", get_delta(good))
+    col2.metric("Within $0.01", f"{lo:.3%}", get_delta(lo))
+    col3.metric("Within $0.02", f"{med:.3%}", get_delta(med))
+    col4.metric("Within $0.05", f"{hi:.3%}", get_delta(hi))
+    # col5.metric("More than $0.05", f"{vhi:.2%}", get_delta(vhi))
 
 
+    # col1, col2, col3, col4 = st.columns(4)
+    # col1.metric("$0.005 off peg", f"{lo:.2%}", get_delta(lo))
+    # col2.metric("$0.01 off peg", f"{med:.2%}", get_delta(med))
+    # col3.metric("$0.02 off peg", f"{hi:.2%}", get_delta(hi))
+    # col4.metric("$0.05 or more off peg", f"{vhi:.2%}", get_delta(vhi))
+
+    # col1.metric("", get_time_off_peg(p["off_peg"]))
+    # col2.metric("", get_time_off_peg(p["off_peg_high"]))
+    # col3.metric("", get_time_off_peg(p["off_peg_vhigh"]))
+
+# %%
 with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
     """New user growth, for new wallets and anchor"""
 
-
+# %%
 with st.expander("Up 📈 or down 📉: Price and supply", expanded=True):
     """LUNA price, UST supply, ..."""
 
-
+# %%
 with st.expander("Sources and References 📜"):
     ...
 
@@ -292,6 +425,9 @@ with st.expander("Sources and References 📜"):
 
 
 #  %%
+# p_off = p.copy()
+# p_off.loc[p.off_peg == False, "UST_PRICE"] = np.nan
+
 # p = prices[['DATETIME', 'UST_PRICE', 'UST_DAILY', 'UST_WEEKLY']]
 # m = prices.melt(id_vars='DATETIME')
 
@@ -323,3 +459,24 @@ with st.expander("Sources and References 📜"):
 # Priority in grading will be given to simple and clean visualizations that display high-impact data metrics to keep the Terra community up-to-date on the health and growth of the network. Additionally, collaboration with other users is welcomed and encouraged. Lastly: we encourage you to rely on existing queries from past submissions rather than reinventing the wheel.
 
 # %%
+# chart2 = (
+#     alt.Chart(p_off)
+#     .mark_line(point=True)
+#     .encode(
+#         x=alt.X(
+#             "utcyearmonthdatehours(DATETIME)",
+#             title="",
+#         ),
+#         y=alt.Y(
+#             "UST_PRICE",
+#             title="Hourly UST Price ($)",
+#             scale=alt.Scale(domain=[0.92, 1.08]),
+#         ),
+#         tooltip=[
+#             alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date"),
+#             alt.Tooltip("UST_PRICE", title="UST Price"),
+#         ],
+#         color=alt.value("#1030e3"),
+#         # strokeWidth=alt.value(1)
+#     )
+# )
