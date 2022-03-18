@@ -657,7 +657,7 @@ with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
     st.subheader("New users growth")
     chart = (
         alt.Chart(join_date)
-        .mark_area()
+        .mark_area(color="#1030e3")
         .encode(
             x=alt.X("JOIN_DATE:T", title=""),
             y=alt.Y(
