@@ -54,7 +54,6 @@ def get_time_off_peg(s: pd.Series) -> str:
         return f"{total/24:.1f} d"
 
 
-
 # %%
 @st.cache(ttl=3600, allow_output_mutation=True)
 def load_flipside_data():
@@ -81,12 +80,6 @@ def load_flipside_data():
     prices["$0.02"] = (prices.UST_PRICE <= 0.98) | (prices.UST_PRICE >= 1.02)
     prices["$0.05 or more"] = (prices.UST_PRICE <= 0.95) | (prices.UST_PRICE >= 1.05)
     # prices["More than $0.05"] = (prices.UST_PRICE < 0.98) | (prices.UST_PRICE > 1.08)
-
-    
-
-
-
-
 
     price_dict = {}
     p = prices.copy().sort_values(by="DATETIME", ascending=False).reset_index(drop=True)
@@ -211,10 +204,18 @@ with st.expander("Summary", expanded=True):
 # %%
 with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
     st.header("UST Peg Stability")
-    """
-    When hourly UST is 0.5% off peg (greater than \$1.005 or less than \$0.995), it is marked in blue.
-    """
-    divergence = st.radio("Analysis for:", ["UST above peg", 'UST below peg', "Both"], 2)
+    # """
+    # Choose whether you want to focus analysis on **only when UST is above peg (<= \$1)**, **only** below peg, **only above peg (>= \$1)**, or **both (all UST prices)**.
+    # """
+    divergence = st.radio(
+        "Choose price range for analysis:",
+        [
+            "UST above peg (price greater than or equal to $1 only)",
+            "UST below peg (price less than or equal to $1 only)",
+            "Both",
+        ],
+        2,
+    )
     date_range = st.selectbox("Date range", date_values.keys(), len(date_values) - 1)
     p = price_dict[date_range]
 
@@ -337,39 +338,40 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
             ),
         )
     )
-    if divergence == "UST above peg":
+    if divergence == "UST above peg (price greater than or equal to $1 only)":
         chart = (price_chart + upper).interactive()
-    elif divergence =='UST below peg':
+    elif divergence == "UST below peg (price less than or equal to $1 only)":
         chart = (price_chart + lower).interactive()
     elif divergence == "Both":
         chart = (price_chart + lower + upper).interactive()
     st.altair_chart(chart, use_container_width=True)
 
-# %%
+    # %%
     # """
     # Percentage of time in each range of UST Peg Stability for this date range:
     # """
-    if divergence == "UST above peg":
-        description = "Percentage of time UST has been been in range, above peg only:"
-    elif divergence =='UST below peg':
-        description = "Percentage of time UST has beenin range, below peg only:"
+    if divergence == "UST above peg (price greater than or equal to $1 only)":
+        description = "Only when UST price **greater than or equal to $1**:"
+    elif divergence == "UST below peg (price less than or equal to $1 only)":
+        description = "Only when UST price **less than or equal to $1**:"
     elif divergence == "Both":
-        description = "Percentage of time UST has been in range:"
-    st.subheader(description)
-
+        description = "All data in date range:"
+    st.subheader("Percentage of time UST has been been in range")
+    description
 
     def get_proportion_in_range(val, df, divergence):
-        price_diff = df.UST_PRICE-1
+        price_diff = df.UST_PRICE - 1
 
-        # df[(price_diff >=0) & price_diff <= val]
-
-
-        if divergence == "UST above peg":
-            return len(df[(price_diff >=0) & (np.abs(price_diff) <= val)])/len(df[price_diff >=0])
-        elif divergence =='UST below peg':
-            return len(df[(price_diff <=0) & (np.abs(price_diff) <= val)])/len(df[price_diff <=0])
+        if divergence == "UST above peg (price greater than or equal to $1 only)":
+            return len(df[(price_diff >= 0) & (np.abs(price_diff) <= val)]) / len(
+                df[price_diff >= 0]
+            )
+        elif divergence == "UST below peg (price less than or equal to $1 only)":
+            return len(df[(price_diff <= 0) & (np.abs(price_diff) <= val)]) / len(
+                df[price_diff <= 0]
+            )
         elif divergence == "Both":
-            return len(df[np.abs(price_diff) <= val])/len(df)
+            return len(df[np.abs(price_diff) <= val]) / len(df)
 
     def get_delta(v: float) -> str:
         if v == 1:
@@ -383,21 +385,18 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
         else:
             return "-😩"
 
-
-
     good = get_proportion_in_range(0.005, p, divergence)
     lo = get_proportion_in_range(0.01, p, divergence)
-    med =  get_proportion_in_range(0.02, p, divergence)
-    hi =  get_proportion_in_range(0.05, p, divergence)
+    med = get_proportion_in_range(0.02, p, divergence)
+    hi = get_proportion_in_range(0.05, p, divergence)
     # vhi =  get_proportion_in_range(0.05, p, opposite=True)
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Within $0.005", f"{good:.3%}", get_delta(good))
-    col2.metric("Within $0.01", f"{lo:.3%}", get_delta(lo))
-    col3.metric("Within $0.02", f"{med:.3%}", get_delta(med))
-    col4.metric("Within $0.05", f"{hi:.3%}", get_delta(hi))
+    col1.metric("Within $0.005", f"{good:.2%}", get_delta(good))
+    col2.metric("Within $0.01", f"{lo:.2%}", get_delta(lo))
+    col3.metric("Within $0.02", f"{med:.2%}", get_delta(med))
+    col4.metric("Within $0.05", f"{hi:.2%}", get_delta(hi))
     # col5.metric("More than $0.05", f"{vhi:.2%}", get_delta(vhi))
-
 
     # col1, col2, col3, col4 = st.columns(4)
     # col1.metric("$0.005 off peg", f"{lo:.2%}", get_delta(lo))
