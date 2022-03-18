@@ -522,8 +522,23 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
 
     st.subheader("UST compared to other stablecoins")
 
-    "Pricing information for other top stablecoins is below, for the same date range. Percentage of time within $0.005 of the peg is also shown."
+    "UST can be compared to other stablecoins below"
+
+    date_range = st.selectbox("Date range", date_values.keys(), len(date_values) - 4)
+    price_range = st.selectbox(
+        "Price range", [0.005, 0.01, 0.02, 0.05], 0, format_func=lambda x: f"${x}"
+    )
     s = stable_dict[date_range]
+
+    #     divergence = st.radio(
+    #     "Choose price range for analysis:",
+    #     [
+    #         "All data",
+    #         "UST above peg (price greater than or equal to $1)",
+    #         "UST below peg (price less $1)",
+    #     ],
+    #     0,
+    # )
 
     base = alt.Chart(s).encode(
         x=alt.X("utcyearmonthdatehours(DATETIME):T", title="Date")
@@ -543,7 +558,7 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
             title="Hourly Price ($)",
             scale=alt.Scale(domain=[s.PRICE.min() * 0.999, s.PRICE.max() * 1.001]),
         ),
-        color="SYMBOL:N",
+        color=alt.Color("SYMBOL:N", scale=alt.Scale(scheme="tableau10")),
     )
     points = lines.mark_point().transform_filter(selection)
 
@@ -552,7 +567,8 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
         .mark_rule()
         .encode(
             opacity=alt.condition(selection, alt.value(0.3), alt.value(0)),
-            tooltip=[alt.Tooltip(c, type="quantitative") for c in columns],
+            tooltip=[alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date")]
+            + [alt.Tooltip(c, type="quantitative") for c in columns],
         )
         .add_selection(selection)
     )
@@ -565,8 +581,8 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
         if i > 3:
             i -= 3
         d = s[s.SYMBOL == c]
-        result = get_proportion_in_range(0.005, d, col="PRICE")
-        col2.metric(f"{c}: within $0.005", f"{result:.2%}", get_delta(result))
+        result = get_proportion_in_range(price_range, d, col="PRICE")
+        col2.metric(f"{c}: within ${price_range}", f"{result:.2%}", get_delta(result))
 
     s["DAILY_MOVING"] = s.groupby("SYMBOL")["PRICE"].transform(
         lambda x: x.rolling(24 * 7, 1).mean()
@@ -592,7 +608,7 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
                 domain=[s.DAILY_MOVING.min() * 0.999, s.DAILY_MOVING.max() * 1.001]
             ),
         ),
-        color="SYMBOL:N",
+        color=alt.Color("SYMBOL:N", scale=alt.Scale(scheme="tableau10")),
     )
     points = lines.mark_point().transform_filter(selection)
 
