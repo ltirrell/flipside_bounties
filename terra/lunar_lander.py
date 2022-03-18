@@ -905,6 +905,8 @@ with st.expander("Sources and References 📜"):
     - [New Users: Join date](https://app.flipsidecrypto.com/velocity/queries/c6cb88f8-6d6b-4d52-8f94-5e2b4f523af1)
     - [New Users: Breakdown of Transactions and users by protocol](https://app.flipsidecrypto.com/velocity/queries/6ad7225c-594b-4b4e-bc5b-7c25124ffa11)
     - [UST Supply and LUNA Price](https://app.flipsidecrypto.com/velocity/queries/a63088ff-0105-4bbe-bdc7-a9d048f16649)
+    - [Terra ransactions used for network creation](https://app.flipsidecrypto.com/velocity/queries/514babaa-91a0-400d-b72a-ecbd3b796780)
+    - [Ethereum ransactions used for network creation](https://app.flipsidecrypto.com/velocity/queries/0b6a2281-1bed-4de0-b872-1c2fc474fde9)
     """
 
 
