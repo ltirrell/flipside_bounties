@@ -75,18 +75,18 @@ def load_flipside_data():
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
     stables = pd.read_json(url)
 
-    prices["$0.005"] = (prices.UST_PRICE <= 0.995) | (prices.UST_PRICE >= 1.005)
-    prices["$0.01"] = (prices.UST_PRICE <= 0.99) | (prices.UST_PRICE >= 1.01)
-    prices["$0.02"] = (prices.UST_PRICE <= 0.98) | (prices.UST_PRICE >= 1.02)
-    prices["$0.05 or more"] = (prices.UST_PRICE <= 0.95) | (prices.UST_PRICE >= 1.05)
-    # prices["More than $0.05"] = (prices.UST_PRICE < 0.98) | (prices.UST_PRICE > 1.08)
+    p = prices[['DATETIME', 'UST_PRICE']]
+    p['SYMBOL'] = 'UST'
+    p = p.rename(columns={"UST_PRICE": "PRICE"})
+    stables =pd.concat([stables, p], ignore_index=True)
 
     price_dict = {}
     p = prices.copy().sort_values(by="DATETIME", ascending=False).reset_index(drop=True)
     for k in date_values.keys():
         v = get_date_range(k, p)
         price_dict[k] = v
-    return prices, price_dict
+    
+    return prices, price_dict, stables
 
 
 # %%
@@ -158,7 +158,7 @@ def load_lcd_data():
 
 
 # %%
-prices, price_dict = load_flipside_data()
+prices, price_dict, stables = load_flipside_data()
 data = load_lcd_data()
 data["ust_price"] = prices.loc[
     prices.DATETIME == prices.DATETIME.max()
@@ -209,10 +209,10 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
     # """
     divergence = st.radio(
         "Choose price range for analysis:",
-        [   "All data",
+        [
+            "All data",
             "UST above peg (price greater than or equal to $1)",
             "UST below peg (price less $1)",
-            
         ],
         0,
     )
@@ -252,7 +252,7 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
         .encode(
             x=alt.X(
                 "utcyearmonthdatehours(DATETIME)",
-                title="",
+                title="Date",
             ),
             y=alt.Y(
                 "UST_PRICE",
@@ -351,38 +351,40 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
     # Percentage of time in each range of UST Peg Stability for this date range:
     # """
     if divergence == "UST above peg (price greater than or equal to $1)":
-        description = "Only when UST price **greater than or equal to $1**."
+        description = "Only data where UST price **greater than or equal to $1** are counted\n\n`Percentage = <number out of range and more than $1> / <total number of data points> * 100`"
     elif divergence == "UST below peg (price less $1)":
-        description = "Only when UST price **less than $1**."
+        description = "Only data where UST price **less than $1** are counted.\n\n`Percentage = <number out of range and less than $1> / <total number of data points> * 100`"
     elif divergence == "All data":
-        description = "All data in date range. The emoji is happier wehn more time is spend close to the peg."
+        description = "All data in date range.\n\n`Percentage = <number out of range> / <total number of data points> * 100`"
+
     st.subheader("Percentage of time UST has been been in range")
     description
 
     def get_proportion_in_range(val, df, divergence):
         price_diff = df.UST_PRICE - 1
+        all_off_peg = df[np.abs(price_diff) >= val]
+        below = all_off_peg[all_off_peg.UST_PRICE < 1]
+        above = all_off_peg[all_off_peg.UST_PRICE > 1]
 
         if divergence == "UST above peg (price greater than or equal to $1)":
-            return len(df[(price_diff >= 0) & (np.abs(price_diff) <= val)]) / len(df)
+            return 1 - (len(above) / len(df))
         elif divergence == "UST below peg (price less $1)":
-            return len(df[(price_diff < 0) & (np.abs(price_diff) <= val)]) / len(df)
+            return 1 - (len(below) / len(df))
         elif divergence == "All data":
-            return len(df[np.abs(price_diff) <= val]) / len(df)
+            return 1 - (len(all_off_peg) / len(df))
 
     def get_delta(v: float, divergence: str) -> str:
-        if divergence == "All data":
-            if v == 1:
-                return "😁"
-            if v >= 0.95:
-                return "🙂"
-            if v >= 0.9:
-                return "-😐"
-            if v >= 0.85:
-                return "-😟"
-            else:
-                return "-😩"
+
+        if v == 1:
+            return "😁"
+        if v >= 0.95:
+            return "🙂"
+        if v >= 0.9:
+            return "-😐"
+        if v >= 0.85:
+            return "-😟"
         else:
-            return ""
+            return "-😩"
 
     good = get_proportion_in_range(0.005, p, divergence)
     lo = get_proportion_in_range(0.01, p, divergence)
@@ -395,17 +397,44 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
     col2.metric("Within $0.01", f"{lo:.2%}", get_delta(lo, divergence))
     col3.metric("Within $0.02", f"{med:.2%}", get_delta(med, divergence))
     col4.metric("Within $0.05", f"{hi:.2%}", get_delta(hi, divergence))
-    # col5.metric("More than $0.05", f"{vhi:.2%}", get_delta(vhi))
+    st.caption("The emoji is happier when more time is spent close to the $1 peg.")
 
-    # col1, col2, col3, col4 = st.columns(4)
-    # col1.metric("$0.005 off peg", f"{lo:.2%}", get_delta(lo))
-    # col2.metric("$0.01 off peg", f"{med:.2%}", get_delta(med))
-    # col3.metric("$0.02 off peg", f"{hi:.2%}", get_delta(hi))
-    # col4.metric("$0.05 or more off peg", f"{vhi:.2%}", get_delta(vhi))
+    chart = (
+        alt.Chart(p)
+        .transform_joinaggregate(total="count(*)")
+        .transform_calculate(pct="1 / datum.total")
+        .mark_bar()
+        .encode(
+            alt.X(
+                "UST_PRICE",
+                bin=alt.Bin(extent=[0.95, 1.05], step=0.005),
+                title="UST Price (binned)",
+            ),
+            alt.Y("sum(pct):Q", axis=alt.Axis(format="%"), title="Percentage"),
+            tooltip=[
+                # alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date"),
+                alt.Tooltip("UST_PRICE", title="UST Price", bin=alt.Bin(extent=[0.97, 1.03], step=0.001),),
+                alt.Tooltip("sum(pct):Q", title="Percentage"),
+            ],
+            color=alt.value("#1030e3"),
+        )
+    ).interactive()
+    col1, col2 = st.columns([2,1])
+    col1.altair_chart((chart), use_container_width=True)
+    col2.metric("Median Price", f"{p.UST_PRICE.median():.3f}")
+    col2.metric("Minimum Price", f"{p.UST_PRICE.min():.3f}")
+    col2.metric("Max Price", f"{p.UST_PRICE.max():.3f}")
 
-    # col1.metric("", get_time_off_peg(p["off_peg"]))
-    # col2.metric("", get_time_off_peg(p["off_peg_high"]))
-    # col3.metric("", get_time_off_peg(p["off_peg_vhigh"]))
+    # chart2 = (
+    #     alt.Chart(p)
+    #     .mark_bar()
+    #     .encode(
+    #         alt.X("UST_PRICE", bin=alt.Bin(extent=[.92, 1.08], step=0.0032)),
+    #         y="count()",
+    #     )
+    # )
+    # col1.altair_chart(chart, use_container_width=True)
+
 
 # %%
 with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
@@ -478,3 +507,16 @@ with st.expander("Sources and References 📜"):
 #         # strokeWidth=alt.value(1)
 #     )
 # )
+
+
+# col5.metric("More than $0.05", f"{vhi:.2%}", get_delta(vhi))
+
+# col1, col2, col3, col4 = st.columns(4)
+# col1.metric("$0.005 off peg", f"{lo:.2%}", get_delta(lo))
+# col2.metric("$0.01 off peg", f"{med:.2%}", get_delta(med))
+# col3.metric("$0.02 off peg", f"{hi:.2%}", get_delta(hi))
+# col4.metric("$0.05 or more off peg", f"{vhi:.2%}", get_delta(vhi))
+
+# col1.metric("", get_time_off_peg(p["off_peg"]))
+# col2.metric("", get_time_off_peg(p["off_peg_high"]))
+# col3.metric("", get_time_off_peg(p["off_peg_vhigh"]))
