@@ -543,6 +543,7 @@ with st.expander("Supply and Demand 📈", expanded=True):
             ),
             tooltip=[
                 alt.Tooltip("DATE:T", title="Date"),
+                alt.Tooltip("PRICE", title="LUNA price, USD", format=",.2f"),
                 alt.Tooltip("TOTAL_BALANCE", title="UST Supply", format=",.2f"),
             ],
         )
@@ -558,6 +559,7 @@ with st.expander("Supply and Demand 📈", expanded=True):
             tooltip=[
                 alt.Tooltip("DATE:T", title="Date"),
                 alt.Tooltip("PRICE", title="LUNA price, USD", format=",.2f"),
+                alt.Tooltip("TOTAL_BALANCE", title="UST Supply", format=",.2f"),
             ],
         )
         .interactive()
