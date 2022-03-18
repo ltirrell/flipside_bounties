@@ -56,15 +56,27 @@ def get_time_off_peg(s: pd.Series) -> str:
 
 
 # %%
-@st.cache(ttl=3600, allow_output_mutation=True)
-def load_flipside_data():
+@st.cache(ttl=7200, allow_output_mutation=True)
+def load_initial_data():
+    q = "77bd19d6-0c7c-4ce8-83c2-e7162adf2cb4"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    prices = pd.read_json(url)
+
+    price_dict = {}
+    p = prices.copy().sort_values(by="DATETIME", ascending=False).reset_index(drop=True)
+    for k in date_values.keys():
+        v = get_date_range(k, p)
+        price_dict[k] = v
+
     q = "c3d0aee6-2d96-4aa4-901a-5104d6588eee"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
     staking = pd.read_json(url)
 
-    q = "77bd19d6-0c7c-4ce8-83c2-e7162adf2cb4"
-    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
-    prices = pd.read_json(url)
+    return price_dict, staking
+
+
+@st.cache(ttl=7200, allow_output_mutation=True)
+def load_flipside_data():
 
     q = "69a171bd-0db3-44e0-9526-93692270d081"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
@@ -74,12 +86,6 @@ def load_flipside_data():
     p["SYMBOL"] = "UST"
     p = p.rename(columns={"UST_PRICE": "PRICE"})
     stables = pd.concat([stables, p], ignore_index=True)
-
-    price_dict = {}
-    p = prices.copy().sort_values(by="DATETIME", ascending=False).reset_index(drop=True)
-    for k in date_values.keys():
-        v = get_date_range(k, p)
-        price_dict[k] = v
 
     stable_dict = {}
     s = (
@@ -99,6 +105,10 @@ def load_flipside_data():
     q = "c6cb88f8-6d6b-4d52-8f94-5e2b4f523af1"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
     join_date = pd.read_json(url)
+    join_date = join_date.sort_values(by="JOIN_DATE").reset_index()
+    join_date["CUMULATIVE"] = join_date.NEW_USERS.cumsum()
+    join_date["JOIN_DATE"] = pd.to_datetime(join_date.JOIN_DATE)
+
     # feet wet p2
     q = "6ad7225c-594b-4b4e-bc5b-7c25124ffa11"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
@@ -124,6 +134,15 @@ def load_flipside_data():
 
     all_users = pd.concat([users, weekly])
 
+    # contractually
+    q = "1c1f031e-7264-4c3e-ad66-c7c7783f05da"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    top20_df = pd.read_json(url)
+
+    q = "e9fbecd3-d5b0-4850-aec1-f62de32a4660"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    by_protocol_df = pd.read_json(url)
+
     for x in summary.columns:
         summary.rename(columns={x: x.title().replace("_", " ")}, inplace=True)
         summary = summary.sort_index(axis=1, ascending=False)
@@ -144,9 +163,9 @@ def load_flipside_data():
         datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z (UTC%z)")
     )
     return (
-        price_dict,
+        # price_dict,
         stable_dict,
-        staking,
+        # staking,
         ust_supply,
         tx,
         all_users,
@@ -154,6 +173,8 @@ def load_flipside_data():
         join_date,
         last_ran,
         net_data,
+        top20_df,
+        by_protocol_df,
     )
 
 
@@ -226,21 +247,12 @@ def load_lcd_data():
 
 
 # %%
-(
-    price_dict,
-    stable_dict,
-    staking,
-    ust_supply,
-    tx,
-    all_users,
-    summary,
-    join_date,
-    last_ran,
-    net_data,
-) = load_flipside_data()
-prices = price_dict["Max"]
-stables = stable_dict["Max"]
+# st.title('LUNAR Lander')
 data = load_lcd_data()
+
+price_dict, staking = load_initial_data()
+prices = price_dict["Max"]
+
 data["ust_price"] = prices.loc[
     prices.DATETIME == prices.DATETIME.max()
 ].UST_PRICE.values[0]
@@ -249,10 +261,7 @@ staking_nona = staking.dropna()
 data["staking_yield"] = staking_nona.loc[
     staking_nona.DATE == staking_nona.DATE.max()
 ].APR.values[0]
-# %%
 
-# %%
-# st.title('LUNAR Lander')
 _, col, _ = st.columns([1, 3, 1])
 image = Image.open(
     "./terra/media/lunar_lander.png",
@@ -262,32 +271,51 @@ col.image(image, use_column_width="auto")
 with st.expander("Summary", expanded=True):
     st.header("Current blockchain status")
     col1, col2 = st.columns(2)
-    with col1.container():
-        st.metric(
-            "Block timestamp (UTC)",
-            f"{data['block_timestamp'].split('T')[0]} {data['block_timestamp'].split('T')[1][:8]}",
-        )
-        image = Image.open("./terra/media/UST.png")
-        st.image(image)
-        st.metric("UST Supply:", f'{data["ust"]:,.0f}')
-        st.metric("UST Price:", format_price(data["ust_price"], 4))
-        image = Image.open("./terra/media/ANC_300x300.png")
-        st.image(image, width=60)
-        st.metric("aUST price:", format_price(data["aust_rate"], 3))
-        st.metric("Anchor Reserve:", format_price(data["anchor_reserve"], 0))
-        st.metric("Anchor APY:", f"{data['anchor_apy']:.2f}%")
-    with col2.container():
-        st.metric("Block", data["block_height"])
-        image = Image.open("./terra/media/Luna.png")
-        st.image(image)
-        st.metric("Luna Price:", format_price(data["luna_price"]))
-        st.metric("LUNA Supply:", f'{data["luna"]:,.0f}')
-        st.metric("LUNA Staking Percentage:", f"{data['staking_yield']:.2f}%")
-        st.metric("LUNA Staking Percentage:", f"{data['staked_percent']:.2f}%")
-        image = Image.open("./terra/media/terra_station.png")
-        st.image(image, width=60)
-        st.metric("Open Governance Proposals", data["open_proposals"])
-        "[Vote here](https://station.terra.money/gov#PROPOSAL_STATUS_VOTING_PERIOD)"
+    # with col1.container():
+    col1.metric(
+        "Block timestamp (UTC)",
+        f"{data['block_timestamp'].split('T')[0]} {data['block_timestamp'].split('T')[1][:8]}",
+    )
+    image = Image.open("./terra/media/UST.png")
+    col1.image(image)
+    col1.metric("UST Supply:", f'{data["ust"]:,.0f}')
+    col1.metric("UST Price:", format_price(data["ust_price"], 4))
+    image = Image.open("./terra/media/ANC_300x300.png")
+    col1.image(image, width=60)
+    col1.metric("aUST price:", format_price(data["aust_rate"], 3))
+    col1.metric("Anchor Reserve:", format_price(data["anchor_reserve"], 0))
+    col1.metric("Anchor APY:", f"{data['anchor_apy']:.2f}%")
+    # with col2.container():
+    col2.metric("Block", data["block_height"])
+    image = Image.open("./terra/media/Luna.png")
+    col2.image(image)
+    col2.metric("Luna Price:", format_price(data["luna_price"]))
+    col2.metric("LUNA Supply:", f'{data["luna"]:,.0f}')
+    col2.metric("LUNA Staking Percentage:", f"{data['staking_yield']:.2f}%")
+    col2.metric("LUNA Staking Percentage:", f"{data['staked_percent']:.2f}%")
+    image = Image.open("./terra/media/terra_station.png")
+    col2.image(image, width=60)
+    col2.metric("Open Governance Proposals", data["open_proposals"])
+    "[Vote here](https://station.terra.money/gov#PROPOSAL_STATUS_VOTING_PERIOD)"
+
+#%%
+data_load_state = st.text("Loading Flipside data, this may take a few seconds...")
+(
+    # price_dict,
+    stable_dict,
+    # staking,
+    ust_supply,
+    tx,
+    all_users,
+    summary,
+    join_date,
+    last_ran,
+    net_data,
+    top20_df,
+    by_protocol_df,
+) = load_flipside_data()
+data_load_state.text("")
+stables = stable_dict["Max"]
 
 # %%
 with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
@@ -595,29 +623,64 @@ with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
     )
 
     st.subheader("New users growth")
-    chart = (
-        alt.Chart(join_date)
-        .mark_area(color="#1030e3")
+    base = alt.Chart(join_date).encode(x=alt.X("JOIN_DATE:T", title=""))
+    area = (
+        base.mark_area(color="#1030e3")
         .encode(
-            x=alt.X("JOIN_DATE:T", title=""),
             y=alt.Y(
                 "NEW_USERS:Q",
                 title="New Users",
             ),
             tooltip=[
                 alt.Tooltip("JOIN_DATE:T", title="Date"),
-                alt.Tooltip("NEW_USERS", title="Users"),
+                alt.Tooltip("NEW_USERS", title="Users", format=",.2f"),
+                alt.Tooltip("CUMULATIVE", title="Cumulative New Users", format=",.2f"),
             ],
         )
-    ).interactive()
+        .interactive()
+    )
+    line = (
+        base.mark_line(color="goldenrod")
+        .encode(
+            y=alt.Y(
+                "CUMULATIVE:Q",
+                title="Cumulative New Users",
+            ),
+            tooltip=[
+                alt.Tooltip("JOIN_DATE:T", title="Date"),
+                alt.Tooltip("NEW_USERS", title="Users", format=",.2f"),
+                alt.Tooltip("CUMULATIVE", title="Cumulative New Users", format=",.2f"),
+            ],
+        )
+        .interactive()
+    )
+    chart = (area + line).resolve_scale(y="independent")
+
+    last_full_day = join_date.iloc[-2]
+    weekly = join_date.resample("7d", on="JOIN_DATE").NEW_USERS.sum()
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Average daily new users", f"{join_date.NEW_USERS.mean():,.0f}")
+    col2.metric(
+        f"New users, {last_full_day.JOIN_DATE:%Y-%m-%d}",
+        f"{last_full_day.NEW_USERS:,}",
+        f"{last_full_day.NEW_USERS-join_date.NEW_USERS.mean():,.0f}",
+    )
+    col3.metric("Average weekly new users", f"{weekly.mean():,.0f}")
+    col4.metric(
+        f"New users, last full week",
+        f"{join_date.iloc[-8:-1].NEW_USERS.sum():,.0f}",
+        f"{join_date.iloc[-8:-1].NEW_USERS.sum() - weekly.mean() :,.0f}",
+    )
+
     st.altair_chart(chart, use_container_width=True)
 
-    st.subheader("New users and transactions by Protocol")
+    st.subheader("New users and transactions by protocol")
 
     """
     Usage of some of the most popular platforms and protocols on the Terra blockchain by new users
-    - [Anchor](https://anchorprotocol.com/) (high yield rate savings)
-    - [Mirror](https://www.mirror.finance/) (synthetic stocks and other assets)
+    - [Anchor](https://anchorprotocol.com/): high yield rate savings
+    - [Mirror](https://www.mirror.finance/): synthetic stocks and other assets
     - [Pylon](https://www.pylon.money/): Yield redirection
     - [Astroport](https://astroport.fi/): Automated market marker / DEX
     - [Terraswap](https://terraswap.io/): Automated market marker / DEX
@@ -625,12 +688,9 @@ with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
     - [Mars](https://marsprotocol.io/): Credit protocol
     - [Random Earth](https://randomearth.io/): NFT Marketplace
     - [Knowhere](https://knowhere.art/): NFT Marketplace
-
-    ------
     """
-
-    col1, col2 = st.columns(2)
-    chart = (
+    st.write("")
+    chart1 = (
         alt.Chart(tx)
         .mark_bar(color="#1030e3")
         .encode(
@@ -641,14 +701,11 @@ with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
             ),
             tooltip=[
                 alt.Tooltip("Protocol", title="Protocol"),
-                alt.Tooltip("value", title="Transactions"),
+                alt.Tooltip("value", title="Transactions", format=","),
             ],
         )
     ).interactive()
-    col1.altair_chart(chart, use_container_width=True)
-    col1.caption("Total New User Transaction Count")
-
-    chart = (
+    chart2 = (
         alt.Chart(all_users)
         .mark_bar(color="#1030e3")
         .encode(
@@ -659,7 +716,7 @@ with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
             ),
             tooltip=[
                 alt.Tooltip("Protocol", title="Protocol"),
-                alt.Tooltip("value", title="Users"),
+                alt.Tooltip("value", title="Users", format=","),
                 alt.Tooltip("type", title="User type"),
             ],
             color=alt.Color(
@@ -673,10 +730,159 @@ with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
         )
         .interactive()
     )
-    col2.altair_chart(chart, use_container_width=True)
-    col2.caption(
-        "New users per protocol:\n- **any** = at least one transaction\n- **weekly** = approximately 1 transaction per week"
+    st.altair_chart(alt.hconcat(chart1, chart2), use_container_width=True)
+    st.caption(
+        "Transaction Count and New users per protocol.\n- **any** = at least one transaction\n- **weekly** = approximately 1 transaction per week"
     )
+    "------"
+    # from contractually_obligated:
+
+    st.subheader("Top 20 contract addresses")
+    st.write("The most used contracts interacted with by new users.")
+
+    def replace_name(x):
+        if x.ADDRESS_NAME is None:
+            return x.rank
+        else:
+            return x.ADDRESS_NAME
+
+    t20_tx = top20_df.sort_values("TX_COUNT", ascending=False)[:20].reset_index(
+        drop=True
+    )
+    t20_tx["rank"] = t20_tx.index + 1
+    t20_tx["ADDRESS_NAME_NORMALIZED"] = t20_tx.ADDRESS_NAME.fillna(
+        t20_tx["CONTRACT"].str[:12]
+    )
+    t20_users = top20_df.sort_values("USERS", ascending=False)[:20].reset_index(
+        drop=True
+    )
+    t20_users["rank"] = t20_users.index + 1
+    t20_users["ADDRESS_NAME_NORMALIZED"] = t20_users.ADDRESS_NAME.fillna(
+        t20_users["CONTRACT"].str[:12]
+    )
+
+    chart1 = (
+        (
+            alt.Chart(t20_tx)
+            .mark_bar()
+            .encode(
+                x=alt.X("ADDRESS_NAME_NORMALIZED", sort="-y", title=""),
+                y=alt.Y(
+                    "TX_COUNT",
+                    title="Transactions",
+                ),
+                color="LABEL",
+                tooltip=[
+                    alt.Tooltip("rank", title="Rank"),
+                    alt.Tooltip("ADDRESS_NAME", title="Contract name"),
+                    alt.Tooltip("LABEL", title="Label"),
+                    alt.Tooltip("LABEL_TYPE", title="Contract type"),
+                    alt.Tooltip("LABEL_SUBTYPE", title="Contract subtype"),
+                    alt.Tooltip("TX_COUNT", title="Transaction Count", format=","),
+                    alt.Tooltip("USERS", title="Users", format=".2f"),
+                    alt.Tooltip("CONTRACT", title="Contract address"),
+                ],
+            )
+        )
+        .interactive()
+        .properties(width=200)
+    )
+
+    chart2 = (
+        (
+            alt.Chart(t20_users)
+            .mark_bar()
+            .encode(
+                x=alt.X("ADDRESS_NAME_NORMALIZED", sort="-y", title=""),
+                y=alt.Y(
+                    "USERS",
+                    title="Users",
+                ),
+                color="LABEL",
+                tooltip=[
+                    alt.Tooltip("rank", title="Rank"),
+                    alt.Tooltip("ADDRESS_NAME", title="Contract name"),
+                    alt.Tooltip("LABEL", title="Label"),
+                    alt.Tooltip("LABEL_TYPE", title="Contract type"),
+                    alt.Tooltip("LABEL_SUBTYPE", title="Contract subtype"),
+                    alt.Tooltip("TX_COUNT", title="Transaction Count", format=","),
+                    alt.Tooltip("USERS", title="Users", format=","),
+                    alt.Tooltip("CONTRACT", title="Contract address"),
+                ],
+            )
+        )
+        .interactive()
+        .properties(width=200)
+    )
+    st.altair_chart(alt.hconcat(chart1, chart2), use_container_width=True)
+    "------"
+    st.subheader("Top Contract addresses by popular protocols")
+    st.write(
+        "For the popular protocols listed above, the most used contracts by new users."
+    )
+    t2_df = by_protocol_df[
+        (by_protocol_df.TX_COUNT_RANK < 3) & (by_protocol_df.USERS_RANK < 3)
+    ]
+    t2_df = t2_df[t2_df.LABEL != "astroport finance"]
+
+    chart1 = (
+        (
+            alt.Chart(t2_df)
+            .mark_bar()
+            .encode(
+                x=alt.X("ADDRESS_NAME", sort="-y", title=""),
+                y=alt.Y(
+                    "TX_COUNT",
+                    title="Transactions",
+                ),
+                color="LABEL",
+                tooltip=[
+                    alt.Tooltip("ADDRESS_NAME", title="Contract name"),
+                    alt.Tooltip("LABEL", title="Label"),
+                    alt.Tooltip("LABEL_TYPE", title="Contract type"),
+                    alt.Tooltip("LABEL_SUBTYPE", title="Contract subtype"),
+                    alt.Tooltip("TX_COUNT", title="Transaction Count", format=","),
+                    alt.Tooltip("USERS", title="Users", format=","),
+                    alt.Tooltip("USERS_RANK", title="Rank on protocol (by users)"),
+                    alt.Tooltip(
+                        "TX_COUNT_RANK", title="Rank on protocol (by transactions)"
+                    ),
+                ],
+            )
+        )
+        .interactive()
+        .properties(width=200)
+    )
+    chart2 = (
+        (
+            alt.Chart(t2_df)
+            .mark_bar()
+            .encode(
+                x=alt.X("ADDRESS_NAME", sort="-y", title=""),
+                y=alt.Y(
+                    "USERS",
+                    title="Users",
+                ),
+                color="LABEL",
+                tooltip=[
+                    alt.Tooltip("ADDRESS_NAME", title="Contract name"),
+                    alt.Tooltip("LABEL", title="Label"),
+                    alt.Tooltip("LABEL_TYPE", title="Contract type"),
+                    alt.Tooltip("LABEL_SUBTYPE", title="Contract subtype"),
+                    alt.Tooltip("TX_COUNT", title="Transaction Count", format=","),
+                    alt.Tooltip("USERS", title="Users", format=","),
+                    alt.Tooltip("USERS_RANK", title="Rank on protocol (by users)"),
+                    alt.Tooltip(
+                        "TX_COUNT_RANK", title="Rank on protocol (by transactions)"
+                    ),
+                ],
+            )
+        )
+        .interactive()
+        .properties(width=200)
+    )
+
+    st.altair_chart(alt.hconcat(chart1, chart2), use_container_width=True)
 
 # %%
 with st.expander("The Stablest?", expanded=True):
@@ -917,6 +1123,8 @@ with st.expander("Sources and References 📜"):
     - [New Users: Summary information](https://app.flipsidecrypto.com/velocity/queries/c1d82778-7da8-4304-8751-b4b76325c008)
     - [New Users: Join date](https://app.flipsidecrypto.com/velocity/queries/c6cb88f8-6d6b-4d52-8f94-5e2b4f523af1)
     - [New Users: Breakdown of Transactions and users by protocol](https://app.flipsidecrypto.com/velocity/queries/6ad7225c-594b-4b4e-bc5b-7c25124ffa11)
+    - [New Users: Top 20 contracts](https://app.flipsidecrypto.com/velocity/queries/1c1f031e-7264-4c3e-ad66-c7c7783f05da)
+    - [New Users: Top 2 by protocol](https://app.flipsidecrypto.com/velocity/queries/e9fbecd3-d5b0-4850-aec1-f62de32a4660)
     - [UST Supply and LUNA Price](https://app.flipsidecrypto.com/velocity/queries/a63088ff-0105-4bbe-bdc7-a9d048f16649)
     - [Terra ransactions used for network creation](https://app.flipsidecrypto.com/velocity/queries/514babaa-91a0-400d-b72a-ecbd3b796780)
     - [Ethereum ransactions used for network creation](https://app.flipsidecrypto.com/velocity/queries/0b6a2281-1bed-4de0-b872-1c2fc474fde9)
