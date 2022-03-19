@@ -247,7 +247,12 @@ def load_lcd_data():
 
 
 # %%
-# st.title('LUNAR Lander')
+_, col, _ = st.columns([1, 3, 1])
+image = Image.open(
+    "./terra/media/lunar_lander.png",
+)
+col.image(image, use_column_width="auto")
+
 data = load_lcd_data()
 
 price_dict, staking = load_initial_data()
@@ -261,12 +266,6 @@ staking_nona = staking.dropna()
 data["staking_yield"] = staking_nona.loc[
     staking_nona.DATE == staking_nona.DATE.max()
 ].APR.values[0]
-
-_, col, _ = st.columns([1, 3, 1])
-image = Image.open(
-    "./terra/media/lunar_lander.png",
-)
-col.image(image, use_column_width="auto")
 
 with st.expander("Summary", expanded=True):
     st.header("Current blockchain status")
@@ -299,7 +298,7 @@ with st.expander("Summary", expanded=True):
     "[Vote here](https://station.terra.money/gov#PROPOSAL_STATUS_VOTING_PERIOD)"
 
 #%%
-data_load_state = st.text("Loading Flipside data, this may take a few seconds...")
+data_load_state = st.text("Loading Flipside data, this will take a few seconds...")
 (
     # price_dict,
     stable_dict,
@@ -332,7 +331,7 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
         ],
         0,
     )
-    date_range = st.selectbox("Date range", date_values.keys(), len(date_values) - 1)
+    date_range = st.selectbox("Date range", date_values.keys(), len(date_values) - 2)
     p = price_dict[date_range]
 
     lower_bands = pd.DataFrame(
@@ -436,7 +435,7 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
         .mark_line()
         .encode(
             x=alt.X(
-                "utcyearmonthdatehours(DATETIME)",
+                "DATETIME",
                 title="Date",
             ),
             y=alt.Y(
@@ -516,6 +515,22 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
     col4.metric("Within $0.05", f"{hi:.2%}", get_delta(hi))
     st.caption("The emoji is happier when more time is spent close to the $1 peg.")
 
+    date_range_texts = {
+        "24h": " in the past day",
+        "7d": " in the past 7 days",
+        "14d": " in the past 14 days",
+        "30d": " in the past 30 days",
+        "60d": " in the past 60 days",
+        "90d": " in the past 90 days",
+        "180d": " in the past 180 days",
+        "1y": " in the past year",
+        "Max": f" since {p.DATETIME.min():%Y-%m-%d}",
+    }
+    try:
+        date_range_string = date_range_texts[date_range]
+    except KeyError:
+        date_range_string = ""
+
     chart = (
         alt.Chart(p)
         .transform_joinaggregate(total="count(*)")
@@ -530,9 +545,12 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
                 ),
                 title="UST Price (binned)",
             ),
-            alt.Y("sum(pct):Q", axis=alt.Axis(format="%"), title="Percentage"),
+            alt.Y(
+                "sum(pct):Q",
+                axis=alt.Axis(format="%"),
+                title=f"Percentage of time{date_range_string}",
+            ),
             tooltip=[
-                # alt.Tooltip("utcyearmonthdatehours(DATETIME)", title="Date"),
                 alt.Tooltip(
                     "UST_PRICE",
                     title="UST Price",
@@ -541,7 +559,7 @@ with st.expander("Square peg, round hole? UST vs. the 💲 Peg", expanded=True):
                         step=0.001,
                     ),
                 ),
-                alt.Tooltip("sum(pct):Q", title="Percentage"),
+                alt.Tooltip("sum(pct):Q", title="Percentage of time"),
             ],
             color=alt.value("#1030e3"),
         )
