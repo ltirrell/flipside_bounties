@@ -200,12 +200,11 @@ components.html(graph, height=550, width=1000)
 #     f"LFG-related transactions, from {date_range[0]:%Y-%m-%d} to {date_range[1]:%Y-%m-%d}"
 # )
 
-try:
-    latest_luna_price = net_data.sort_values(
-        by="BLOCK_TIMESTAMP", ascending=False
-    ).LUNA_PRICE_USD.values[0]
-except AttributeError:
-    latest_luna_price = 88  # HACK: dataset has new LUNA_PRICE_USD, this is used while the cache is being updated
+
+latest_luna_price = net_data.sort_values(
+    by="BLOCK_TIMESTAMP", ascending=False
+).LUNA_PRICE_USD.dropna().values[0]
+
 
 f"""
 The interactive network of all transactions to and from the [**LFG wallet**](https://finder.extraterrestrial.money/mainnet/account/terra1gr0xesnseevzt3h4nxr64sh5gk4dwrwgszx3nw) are shown above, where nodes are wallet addresses and edges represent transactions between them.
