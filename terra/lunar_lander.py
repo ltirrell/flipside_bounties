@@ -109,6 +109,13 @@ def load_flipside_data():
     join_date["CUMULATIVE"] = join_date.NEW_USERS.cumsum()
     join_date["JOIN_DATE"] = pd.to_datetime(join_date.JOIN_DATE)
 
+    q = "4f6342fe-87b9-4e4c-a9d3-6ad352d490f4"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    join_date_all = pd.read_json(url)
+    join_date_all = join_date_all.sort_values(by="JOIN_DATE").reset_index()
+    join_date_all["CUMULATIVE"] = join_date_all.NEW_USERS.cumsum()
+    join_date_all["JOIN_DATE"] = pd.to_datetime(join_date_all.JOIN_DATE)
+
     # feet wet p2
     q = "6ad7225c-594b-4b4e-bc5b-7c25124ffa11"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
@@ -171,6 +178,7 @@ def load_flipside_data():
         all_users,
         summary,
         join_date,
+        join_date_all,
         last_ran,
         net_data,
         top20_df,
@@ -308,6 +316,7 @@ data_load_state = st.text("Loading Flipside data, this will take a few seconds..
     all_users,
     summary,
     join_date,
+    join_date_all,
     last_ran,
     net_data,
     top20_df,
@@ -616,9 +625,54 @@ with st.expander("Supply and Demand 📈", expanded=True):
 
 # %%
 with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
-    st.header("New User Metrics")
+    st.header("User Metrics")
+    base = alt.Chart(join_date_all).encode(x=alt.X("JOIN_DATE:T", title=""))
+    area = (
+        base.mark_area(color="#1030e3")
+        .encode(
+            y=alt.Y(
+                "NEW_USERS:Q",
+                title="New Users",
+            ),
+            tooltip=[
+                alt.Tooltip("JOIN_DATE:T", title="Date"),
+                alt.Tooltip("NEW_USERS", title="Users", format=",.2f"),
+                alt.Tooltip("CUMULATIVE", title="Cumulative New Users", format=",.2f"),
+            ],
+        )
+        .interactive()
+    )
+    line = (
+        base.mark_line(color="goldenrod")
+        .encode(
+            y=alt.Y(
+                "CUMULATIVE:Q",
+                title="Cumulative New Users",
+            ),
+            tooltip=[
+                alt.Tooltip("JOIN_DATE:T", title="Date"),
+                alt.Tooltip("NEW_USERS", title="Users", format=",.2f"),
+                alt.Tooltip("CUMULATIVE", title="Cumulative New Users", format=",.2f"),
+            ],
+        )
+        .interactive()
+    )
+    chart = (area + line).resolve_scale(y="independent")
+
+    last_full_day = join_date_all.iloc[-2]
+    weekly = join_date_all.resample("7d", on="JOIN_DATE").NEW_USERS.sum()
+    monthly = join_date_all.resample("30d", on="JOIN_DATE").NEW_USERS.sum()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Average daily new users", f"{join_date_all.NEW_USERS.mean():,.0f}")
+    col2.metric("Average weekly new users", f"{weekly.mean():,.0f}")
+    col3.metric("Average monthly new users", f"{monthly.mean():,.0f}")
+
+
+    st.altair_chart(chart, use_container_width=True)
+
+    st.subheader("New Users: Summary information")
     "New users are defined as creating their first transaction within the last 90 days."
-    st.subheader("Summary information")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Wallets", value=f"{summary['Total Wallets'].values[0]:,}")
     col2.metric("Total Transactions", value=f"{summary['Total Tx'].values[0]:,}")
