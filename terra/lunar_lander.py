@@ -303,7 +303,7 @@ with st.expander("Summary", expanded=True):
     image = Image.open("./terra/media/terra_station.png")
     col2.image(image, width=60)
     col2.metric("Open Governance Proposals", data["open_proposals"])
-    "[Vote here](https://station.terra.money/gov#PROPOSAL_STATUS_VOTING_PERIOD)"
+    col2.write("[Vote here](https://station.terra.money/gov#PROPOSAL_STATUS_VOTING_PERIOD)")
 
 #%%
 data_load_state = st.text("Loading Flipside data, this will take a few seconds...")
