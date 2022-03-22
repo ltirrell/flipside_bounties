@@ -1192,6 +1192,7 @@ with st.expander("Sources and References 📜"):
     - [LUNA staking information](https://app.flipsidecrypto.com/velocity/queries/c3d0aee6-2d96-4aa4-901a-5104d6588eee)
     - [UST pricing information](https://app.flipsidecrypto.com/velocity/queries/77bd19d6-0c7c-4ce8-83c2-e7162adf2cb4)
     - [Pricing information for other stablecoins](https://app.flipsidecrypto.com/velocity/queries/69a171bd-0db3-44e0-9526-93692270d081)
+    - [All Users: Join date](https://app.flipsidecrypto.com/velocity/queries/4f6342fe-87b9-4e4c-a9d3-6ad352d490f4)
     - [New Users: Summary information](https://app.flipsidecrypto.com/velocity/queries/c1d82778-7da8-4304-8751-b4b76325c008)
     - [New Users: Join date](https://app.flipsidecrypto.com/velocity/queries/c6cb88f8-6d6b-4d52-8f94-5e2b4f523af1)
     - [New Users: Breakdown of Transactions and users by protocol](https://app.flipsidecrypto.com/velocity/queries/6ad7225c-594b-4b4e-bc5b-7c25124ffa11)
