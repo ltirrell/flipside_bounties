@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from pyvis.network import Network
 from PIL import Image
+import requests
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -169,7 +170,7 @@ In a short few weeks since it was found, LFG has made a large impact:
 - **22 Feb, 2022**: [Establishment of a $1 billion Bitcoin reserve](https://twitter.com/terra_money/status/1496162889085902856).
 - **09 Mar, 2022**: [Support the expansion of UST by burning over 4 million LUNA and providing it to the Curve pool](https://twitter.com/LFG_org/status/1501563945076862982).
 - **11 Mar, 2022**: [Renewal of LFG LUNA reserves, with a second donation of 12 million LUNA from Terraform labs](https://twitter.com/stablekwon/status/1502225674840555523).
-
+- **UPDATE! 23 Mar, 2022**:  [LFG purchases over 15,000 BTC to establish its reserve](https://twitter.com/BitcoinMagazine/status/1506683309388095491)
 
 Let's F'ing Go investigate how LFG has been using its funding to support its mission of estabilishing a decentralized UST reserve pool.
 """
@@ -201,9 +202,11 @@ components.html(graph, height=550, width=1000)
 # )
 
 
-latest_luna_price = net_data.sort_values(
-    by="BLOCK_TIMESTAMP", ascending=False
-).LUNA_PRICE_USD.dropna().values[0]
+latest_luna_price = (
+    net_data.sort_values(by="BLOCK_TIMESTAMP", ascending=False)
+    .LUNA_PRICE_USD.dropna()
+    .values[0]
+)
 
 
 f"""
@@ -225,8 +228,22 @@ Values without a '\$' are in native currency, and are always as accurate as the 
 
 st.header("Key Wallets and Metrics")
 
+st.subheader("Bitcoin Reserve ₿")
+"""
+[LFG Bitcoin wallet](https://www.blockchain.com/btc/address/bc1q9d4ywgfnd8h43da5tpcxcn6ajv590cg6d3tg6axemvljvt2k76zs50tv4q): Made public on 23 March 2022
+"""
+lfg_btc_address='bc1q9d4ywgfnd8h43da5tpcxcn6ajv590cg6d3tg6axemvljvt2k76zs50tv4q'
+r = requests.get(f'https://blockstream.info/api/address/{lfg_btc_address}').json()
+btc = r['chain_stats']['funded_txo_sum'] / 100_000_000
 
-st.subheader("LFG actions 💰")
+r = requests.get('https://api.coingecko.com/api/v3/coins/bitcoin').json()
+current_price = r['market_data']['current_price']['usd']
+col1, col2 = st.columns(2)
+col1.metric("LFG Bitcoin reserve, ₿", f"{btc:,.0f}")
+col2.metric("LFG Bitcoin reserve, current value", f"${current_price * btc:,.0f}")
+"-----"
+
+st.subheader("LFG actions on the Terra blockchain 💰")
 """
 LFG's main wallet sends out LUNA to other wallets or smart contracts to complete its goals, including vesting LUNA for a decentralized reserve and funding the Anchor Yield reserve.
 - [**Luna Foundation Guard**](https://finder.extraterrestrial.money/mainnet/account/terra1gr0xesnseevzt3h4nxr64sh5gk4dwrwgszx3nw): Funded by Terraform labs, the main wallet of LFG.
@@ -329,19 +346,24 @@ current_gnosis_df = eth_balances[eth_balances.USER_ADDRESS == gnosis_address][
     eth_balances.BALANCE_DATE == eth_balances.BALANCE_DATE.max()
 ][["SYMBOL", "BALANCE"]].reset_index()
 
-gnosis_currencies = len(current_gnosis_df)
-cols = st.columns(gnosis_currencies)
+
+# use a whitelist of currencies for now, since there's some random coins in that awallet now
+gnosis_currencies = ["USDC", "USDT", "ETH"]
+cols = st.columns(len(gnosis_currencies))
 for i, c in enumerate(cols):
-    c.metric(
-        f"Gnosis balance, {current_gnosis_df.iloc[i].SYMBOL}",
-        f"{current_gnosis_df.iloc[i].BALANCE:,.0f}",
-    )
+    try:
+        c.metric(
+            f"Gnosis balance, {current_gnosis_df.loc[current_gnosis_df.SYMBOL==gnosis_currencies[i]].SYMBOL.values[0]}",
+            f"{current_gnosis_df.loc[current_gnosis_df.SYMBOL==gnosis_currencies[i]].BALANCE.values[0]:,.0f}",
+        )
+    except IndexError:  # currency not in the wallet
+        pass
 
 st.header("Discussion")
 f"""
 LFG has burned {grouped_net_df[grouped_net_df.TO_LABEL=='terra: mints & burns'].AMOUNT.sum():,.0f} LUNA for UST, and used this to fund Anchor and rebalance the UST-3Pool on Curve.
 
-With ${gnosis.AMOUNT_USD.sum():,.0f} as a reserve on Ethereum, {vesting.AMOUNT.sum():,.0f} LUNA vested for BTC (or other, as-yet-unknown puposes), and a wallet balance of {grouped_net_df[grouped_net_df.TO_LABEL=='Luna Foundation Guard'].AMOUNT.sum() - grouped_net_df[grouped_net_df.FROM_LABEL=='Luna Foundation Guard'].AMOUNT.sum():,.0f}, LFG has a solid and diversifying set of assets to provide stability to the UST peg.
+With ${gnosis.AMOUNT_USD.sum():,.0f} as a reserve on Ethereum, {vesting.AMOUNT.sum():,.0f} LUNA vested for BTC (or other, as-yet-unknown puposes), and a wallet balance of {grouped_net_df[grouped_net_df.TO_LABEL=='Luna Foundation Guard'].AMOUNT.sum() - grouped_net_df[grouped_net_df.FROM_LABEL=='Luna Foundation Guard'].AMOUNT.sum():,.0f} LUNA, LFG has a solid and diversifying set of assets to provide stability to the UST peg.
 """
 
 with st.expander("Sources and notes"):
@@ -363,6 +385,10 @@ with st.expander("Sources and notes"):
             - GJ | Flipside Crypto#1919
 
     This data is updated approximately every hour, and the dashboard will be further expanded as more knowledge on LFG addresses and transactions are known.
+
+    The Bitcoin account balance was acquired using the [Blockstream API](https://github.com/Blockstream/esplora/blob/master/API.md), and is updated on every page load.
+
+    Current Bitcoin price is obtained using the [CoinGecko API](https://www.coingecko.com/en/api/documentation)
 
     Dollar prices may be slightly off due to differences in data sources.
     Transactions with values under $1000 have been removed from these analyses,
