@@ -298,7 +298,7 @@ with st.expander("Summary", expanded=True):
     col2.image(image)
     col2.metric("Luna Price:", format_price(data["luna_price"]))
     col2.metric("LUNA Supply:", f'{data["luna"]:,.0f}')
-    col2.metric("LUNA Staking Percentage:", f"{data['staking_yield']:.2f}%")
+    col2.metric("LUNA Staking Yield:", f"{data['staking_yield']:.2f}%")
     col2.metric("LUNA Staking Percentage:", f"{data['staked_percent']:.2f}%")
     image = Image.open("./terra/media/terra_station.png")
     col2.image(image, width=60)
