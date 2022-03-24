@@ -228,7 +228,7 @@ Values without a '\$' are in native currency, and are always as accurate as the 
 
 st.header("Key Wallets and Metrics")
 
-st.subheader("Bitcoin Reserve ₿")
+st.subheader("LFG Bitcoin Reserve ₿🏦")
 """
 [LFG Bitcoin wallet](https://www.blockchain.com/btc/address/bc1q9d4ywgfnd8h43da5tpcxcn6ajv590cg6d3tg6axemvljvt2k76zs50tv4q): Made public on 23 March 2022
 """
@@ -334,21 +334,16 @@ col1.caption(
 col2.caption("Estimated profit/loss:\n\n`UST bridged - Gnosis Transfer Amount`")
 # st.metric()
 
-st.subheader("LFG Reserve 🏦")
-"""
-LFG has announced the creation of a BTC reserve.
-While this address isn't currently known, it will be added here at a later point.
-
-For now, the known reserve outside the LUNA ecosystem is stored in the Gnosis Safe.
-"""
 gnosis_address = "0xad41bd1cf3fd753017ef5c0da8df31a3074ea1ea"
 current_gnosis_df = eth_balances[eth_balances.USER_ADDRESS == gnosis_address][
     eth_balances.BALANCE_DATE == eth_balances.BALANCE_DATE.max()
 ][["SYMBOL", "BALANCE"]].reset_index()
 
-
+"""
+The current balance of select assets in the Gnosis Safe is tracked here:
+"""
 # use a whitelist of currencies for now, since there's some random coins in that awallet now
-gnosis_currencies = ["USDC", "USDT", "ETH"]
+gnosis_currencies = ["USDC", "USDT"]
 cols = st.columns(len(gnosis_currencies))
 for i, c in enumerate(cols):
     try:
@@ -358,7 +353,7 @@ for i, c in enumerate(cols):
         )
     except IndexError:  # currency not in the wallet
         pass
-
+"-----"
 st.header("Discussion")
 f"""
 LFG has burned {grouped_net_df[grouped_net_df.TO_LABEL=='terra: mints & burns'].AMOUNT.sum():,.0f} LUNA for UST, and used this to fund Anchor and rebalance the UST-3Pool on Curve.
