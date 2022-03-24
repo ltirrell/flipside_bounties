@@ -371,7 +371,7 @@ With ${gnosis.AMOUNT_USD.sum():,.0f} as a reserve on Ethereum, {vesting.AMOUNT.s
 with st.expander("Sources and notes"):
     """
     Data from [Flipside Crypto](https://flipsidecrypto.xyz/)
-    - [Terra ransactions used for network creation](https://app.flipsidecrypto.com/velocity/queries/514babaa-91a0-400d-b72a-ecbd3b796780)
+    - [Terra transactions used for network creation](https://app.flipsidecrypto.com/velocity/queries/514babaa-91a0-400d-b72a-ecbd3b796780)
     - [Ethereum ransactions used for network creation](https://app.flipsidecrypto.com/velocity/queries/0b6a2281-1bed-4de0-b872-1c2fc474fde9)
     - [Vesting contract transactions](https://app.flipsidecrypto.com/velocity/queries/16137f94-d5de-4ce9-8e8e-6734691fc42b)
     - [Gnosis Safe transactions](https://app.flipsidecrypto.com/velocity/queries/63749e53-fe73-4608-ab5e-040c8e89a093)
