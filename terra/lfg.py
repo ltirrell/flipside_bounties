@@ -228,9 +228,9 @@ Values without a '\$' are in native currency, and are always as accurate as the 
 
 st.header("Key Wallets and Metrics")
 
-st.subheader("LFG Bitcoin Reserve ₿🏦")
+st.subheader("LFG Bitcoin Reserve 🏦")
 """
-[LFG Bitcoin wallet](https://www.blockchain.com/btc/address/bc1q9d4ywgfnd8h43da5tpcxcn6ajv590cg6d3tg6axemvljvt2k76zs50tv4q): Made public on 23 March 2022
+- [LFG Bitcoin wallet](https://www.blockchain.com/btc/address/bc1q9d4ywgfnd8h43da5tpcxcn6ajv590cg6d3tg6axemvljvt2k76zs50tv4q): Made public on 23 March 2022
 """
 lfg_btc_address='bc1q9d4ywgfnd8h43da5tpcxcn6ajv590cg6d3tg6axemvljvt2k76zs50tv4q'
 r = requests.get(f'https://blockstream.info/api/address/{lfg_btc_address}').json()
@@ -334,25 +334,32 @@ col1.caption(
 col2.caption("Estimated profit/loss:\n\n`UST bridged - Gnosis Transfer Amount`")
 # st.metric()
 
+st.subheader("LFG Gnosis Safe Reserve 🏦")
+"""
+The current balance of the [**Gnosis Safe wallet**](https://etherscan.io/address/0xad41bd1cf3fd753017ef5c0da8df31a3074ea1ea) is tracked here:
+"""
+
+
 gnosis_address = "0xad41bd1cf3fd753017ef5c0da8df31a3074ea1ea"
 current_gnosis_df = eth_balances[eth_balances.USER_ADDRESS == gnosis_address][
     eth_balances.BALANCE_DATE == eth_balances.BALANCE_DATE.max()
-][["SYMBOL", "BALANCE"]].reset_index()
+][["SYMBOL", "BALANCE", "AMOUNT_USD"]].reset_index()
 
-"""
-The current balance of select assets in the Gnosis Safe is tracked here:
-"""
+
+
 # use a whitelist of currencies for now, since there's some random coins in that awallet now
 gnosis_currencies = ["USDC", "USDT"]
-cols = st.columns(len(gnosis_currencies))
+cols = st.columns(len(gnosis_currencies)+1)
 for i, c in enumerate(cols):
     try:
         c.metric(
-            f"Gnosis balance, {current_gnosis_df.loc[current_gnosis_df.SYMBOL==gnosis_currencies[i]].SYMBOL.values[0]}",
+            f"{current_gnosis_df.loc[current_gnosis_df.SYMBOL==gnosis_currencies[i]].SYMBOL.values[0]} Balance",
             f"{current_gnosis_df.loc[current_gnosis_df.SYMBOL==gnosis_currencies[i]].BALANCE.values[0]:,.0f}",
         )
     except IndexError:  # currency not in the wallet
         pass
+
+cols[-1].metric("Total Value", f"${current_gnosis_df.AMOUNT_USD.sum():,.0f}")
 "-----"
 st.header("Discussion")
 f"""
