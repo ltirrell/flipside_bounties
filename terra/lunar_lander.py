@@ -12,6 +12,8 @@ from scipy.stats import kendalltau
 import streamlit as st
 import streamlit.components.v1 as components
 
+
+st.set_page_config(page_title="LUNAr Lander", page_icon="🌕")
 # %%
 # https://github.com/alecande11/terra-discord-webhook/blob/main/realtimeData.js
 LCD = "https://lcd.terra.dev"
@@ -260,6 +262,7 @@ image = Image.open(
     "./terra/media/lunar_lander.png",
 )
 col.image(image, use_column_width="auto")
+st.caption("Created by [@ltirrell_](https://twitter.com/ltirrell_)")
 
 data = load_lcd_data()
 
