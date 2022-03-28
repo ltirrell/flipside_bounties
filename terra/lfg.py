@@ -27,6 +27,17 @@ def load_data():
     net_data = pd.concat([net_data_terra, net_data_eth]).reset_index(drop=True)
     net_data["BLOCK_TIMESTAMP"] = pd.to_datetime(net_data.BLOCK_TIMESTAMP)
 
+    # HACK: attempt to fix broken labels
+    net_data.loc[
+        net_data.RECIPIENT == "terra1tmnqgvg567ypvsvk6rwsga3srp7e3lg6u0elp8", "TO_LABEL"
+    ] = "anchor: Overseer"
+    net_data.loc[
+        net_data.RECIPIENT == "terra1untf85jwv3kt0puyyc39myxjvplagr3wstgs5s", "TO_LABEL"
+    ] = "terra: mints & burns"
+    net_data.loc[
+        net_data.RECIPIENT == "terra10nmmwe8r3g99a9newtqa7a75xfgs2e8z87r2sf", "TO_LABEL"
+    ] = "wormhole: wormhole"
+
     q = "63749e53-fe73-4608-ab5e-040c8e89a093"
     url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
     gnosis = pd.read_json(url)
@@ -232,12 +243,12 @@ st.subheader("LFG Bitcoin Reserve 🏦")
 """
 - [LFG Bitcoin wallet](https://www.blockchain.com/btc/address/bc1q9d4ywgfnd8h43da5tpcxcn6ajv590cg6d3tg6axemvljvt2k76zs50tv4q): Made public on 23 March 2022
 """
-lfg_btc_address='bc1q9d4ywgfnd8h43da5tpcxcn6ajv590cg6d3tg6axemvljvt2k76zs50tv4q'
-r = requests.get(f'https://blockstream.info/api/address/{lfg_btc_address}').json()
-btc = r['chain_stats']['funded_txo_sum'] / 100_000_000
+lfg_btc_address = "bc1q9d4ywgfnd8h43da5tpcxcn6ajv590cg6d3tg6axemvljvt2k76zs50tv4q"
+r = requests.get(f"https://blockstream.info/api/address/{lfg_btc_address}").json()
+btc = r["chain_stats"]["funded_txo_sum"] / 100_000_000
 
-r = requests.get('https://api.coingecko.com/api/v3/coins/bitcoin').json()
-current_price = r['market_data']['current_price']['usd']
+r = requests.get("https://api.coingecko.com/api/v3/coins/bitcoin").json()
+current_price = r["market_data"]["current_price"]["usd"]
 col1, col2 = st.columns(2)
 col1.metric("LFG Bitcoin reserve, ₿", f"{btc:,.0f}")
 col2.metric("LFG Bitcoin reserve, current value", f"${current_price * btc:,.0f}")
@@ -346,10 +357,9 @@ current_gnosis_df = eth_balances[eth_balances.USER_ADDRESS == gnosis_address][
 ][["SYMBOL", "BALANCE", "AMOUNT_USD"]].reset_index()
 
 
-
 # use a whitelist of currencies for now, since there's some random coins in that awallet now
 gnosis_currencies = ["USDC", "USDT"]
-cols = st.columns(len(gnosis_currencies)+1)
+cols = st.columns(len(gnosis_currencies) + 1)
 for i, c in enumerate(cols):
     try:
         c.metric(
