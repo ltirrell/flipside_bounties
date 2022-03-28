@@ -171,6 +171,7 @@ grouped_net_df = subset_network(
 
 ### Content
 st.title("LFG! Tracking the Luna Foundation Guard reserves and transactions")
+st.caption("Created by [@ltirrell_](https://twitter.com/ltirrell_)")
 image = Image.open("./terra/media/lfg_full.png")
 st.image(image, caption="A decentralized economy needs a decentralized currency")
 
