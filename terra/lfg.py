@@ -235,7 +235,7 @@ Second order connections (addresses that transacted with addresses funded by LFG
 Note that dollar amounts in these analyses should be treated as approximates. 
 In some cases, the estimated LUNA price is not available at the time of transaction.
 
-Dollar values associated with LUNA were calculated using the latest price (\${latest_luna_price:.2f}).
+Dollar values associated with LUNA were calculated using the latest daily average price (\${latest_luna_price:.2f}).
 Values without a '\$' are in native currency, and are always as accurate as the data source.
 """
 
