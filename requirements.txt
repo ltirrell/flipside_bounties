@@ -1,5 +1,6 @@
 altair
 arch
+click < 8.1
 matplotlib
 networkx
 numpy
