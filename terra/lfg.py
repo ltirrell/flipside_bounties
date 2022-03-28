@@ -284,7 +284,7 @@ col1, col2 = st.columns(2)
 col1.metric("Vested LUNA", f"{vested_amount:,.0f}")
 col2.metric("Vested LUNA value, USD", f"${vested_amount*latest_luna_price:,.0f}")
 """
-- [**Fund Anchor Reserve**](https://finder.extraterrestrial.money/mainnet/account/terra13h0qevzm8r5q0yknaamlq6m3k8kuluce7yf5lj): provided funding to the Anchor Yield Reserce.
+- [**Fund Anchor Reserve**](https://finder.extraterrestrial.money/mainnet/account/terra13h0qevzm8r5q0yknaamlq6m3k8kuluce7yf5lj): provided funding to the Anchor Yield Reserve.
 """
 st.metric(
     "Anchor Yield Reserve supplement value, UST",
