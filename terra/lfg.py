@@ -1,5 +1,4 @@
 import datetime
-from urllib.error import HTTPError
 
 import networkx as nx
 import numpy as np
@@ -15,58 +14,55 @@ st.set_page_config(page_title="LFG!", page_icon="🌕")
 
 @st.cache(ttl=4800, allow_output_mutation=True)
 def load_data():
-    try:
-        q = "16137f94-d5de-4ce9-8e8e-6734691fc42b"
-        url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
-        vesting = pd.read_json(url)
+    q = "16137f94-d5de-4ce9-8e8e-6734691fc42b"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    vesting = pd.read_json(url)
 
-        q = "514babaa-91a0-400d-b72a-ecbd3b796780"
-        url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
-        net_data_terra = pd.read_json(url)
+    q = "514babaa-91a0-400d-b72a-ecbd3b796780"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    net_data_terra = pd.read_json(url)
 
-        q = "0b6a2281-1bed-4de0-b872-1c2fc474fde9"
-        url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
-        net_data_eth = pd.read_json(url)
+    q = "0b6a2281-1bed-4de0-b872-1c2fc474fde9"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    net_data_eth = pd.read_json(url)
 
-        net_data = pd.concat([net_data_terra, net_data_eth]).reset_index(drop=True)
-        net_data["BLOCK_TIMESTAMP"] = pd.to_datetime(net_data.BLOCK_TIMESTAMP)
+    net_data = pd.concat([net_data_terra, net_data_eth]).reset_index(drop=True)
+    net_data["BLOCK_TIMESTAMP"] = pd.to_datetime(net_data.BLOCK_TIMESTAMP)
 
-        # HACK: attempt to fix broken labels
-        net_data.loc[
-            net_data.RECIPIENT == "terra1tmnqgvg567ypvsvk6rwsga3srp7e3lg6u0elp8", "TO_LABEL"
-        ] = "anchor: Overseer"
-        net_data.loc[
-            net_data.RECIPIENT == "terra1untf85jwv3kt0puyyc39myxjvplagr3wstgs5s", "TO_LABEL"
-        ] = "terra: mints & burns"
-        net_data.loc[
-            net_data.RECIPIENT == "terra10nmmwe8r3g99a9newtqa7a75xfgs2e8z87r2sf", "TO_LABEL"
-        ] = "wormhole: wormhole"
+    # HACK: attempt to fix broken labels
+    net_data.loc[
+        net_data.RECIPIENT == "terra1tmnqgvg567ypvsvk6rwsga3srp7e3lg6u0elp8", "TO_LABEL"
+    ] = "anchor: Overseer"
+    net_data.loc[
+        net_data.RECIPIENT == "terra1untf85jwv3kt0puyyc39myxjvplagr3wstgs5s", "TO_LABEL"
+    ] = "terra: mints & burns"
+    net_data.loc[
+        net_data.RECIPIENT == "terra10nmmwe8r3g99a9newtqa7a75xfgs2e8z87r2sf", "TO_LABEL"
+    ] = "wormhole: wormhole"
 
-        q = "63749e53-fe73-4608-ab5e-040c8e89a093"
-        url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
-        gnosis = pd.read_json(url)
+    q = "63749e53-fe73-4608-ab5e-040c8e89a093"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    gnosis = pd.read_json(url)
 
-        q = "83945792-fbd4-4ab3-a09d-7bd079dc6078"
-        url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
-        eth_balances = pd.read_json(url)
+    q = "83945792-fbd4-4ab3-a09d-7bd079dc6078"
+    url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    eth_balances = pd.read_json(url)
 
-        # q = "927f77c7-2537-4c92-af68-c24f3ce701cc"
-        # url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
-        # terra_balances = pd.read_json(url)
+    # q = "927f77c7-2537-4c92-af68-c24f3ce701cc"
+    # url = f"https://api.flipsidecrypto.com/api/v2/queries/{q}/data/latest"
+    # terra_balances = pd.read_json(url)
 
-        last_ran = (
-            datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z (UTC%z)")
-        )
-        return (
-            vesting,
-            net_data,
-            gnosis,
-            eth_balances,
-            # terra_balances,
-            last_ran,
-        )
-    except HTTPError:
-        st.text("Error in loading data, please try again later....")
+    last_ran = (
+        datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z (UTC%z)")
+    )
+    return (
+        vesting,
+        net_data,
+        gnosis,
+        eth_balances,
+        # terra_balances,
+        last_ran,
+    )
 
 
 def subset_network(df, date_range):
