@@ -30,6 +30,8 @@ date_values = {
     "1y": 24 * 365,
     "Max": -1,
 }
+stables = ["BUSD", "DAI", "FRAX", "MIM", "USDC", "USDT", "UST"]
+stable_date_values = {k: len(stables) * v for k, v in date_values.items()}
 
 
 def convert(val: str) -> float:
@@ -40,8 +42,8 @@ def format_price(val: float, decimals=2) -> str:
     return f"${val:,.{decimals}f}"
 
 
-def get_date_range(val: str, df: pd.DataFrame) -> pd.DataFrame:
-    data_points = date_values[val]
+def get_date_range(val: str, val_dict: dict, df: pd.DataFrame) -> pd.DataFrame:
+    data_points = val_dict[val]
     if data_points == -1:
         return df
     else:
@@ -67,7 +69,7 @@ def load_initial_data():
     price_dict = {}
     p = prices.copy().sort_values(by="DATETIME", ascending=False).reset_index(drop=True)
     for k in date_values.keys():
-        v = get_date_range(k, p)
+        v = get_date_range(k, date_values, p)
         price_dict[k] = v
 
     q = "c3d0aee6-2d96-4aa4-901a-5104d6588eee"
@@ -95,8 +97,8 @@ def load_flipside_data():
         .sort_values(by="DATETIME", ascending=False)
         .reset_index(drop=True)
     )
-    for k in date_values.keys():
-        v = get_date_range(k, s)
+    for k in stable_date_values.keys():
+        v = get_date_range(k, stable_date_values, s)
         stable_dict[k] = v
 
     # feet wet p1
@@ -306,7 +308,9 @@ with st.expander("Summary", expanded=True):
     image = Image.open("./terra/media/terra_station.png")
     col2.image(image, width=60)
     col2.metric("Open Governance Proposals", data["open_proposals"])
-    col2.write("[Vote here](https://station.terra.money/gov#PROPOSAL_STATUS_VOTING_PERIOD)")
+    col2.write(
+        "[Vote here](https://station.terra.money/gov#PROPOSAL_STATUS_VOTING_PERIOD)"
+    )
 
 #%%
 data_load_state = st.text("Loading Flipside data, this will take a few seconds...")
@@ -670,7 +674,6 @@ with st.expander("To the moon 🚀🌕! User metrics", expanded=True):
     col1.metric("Average daily new users", f"{join_date_all.NEW_USERS.mean():,.0f}")
     col2.metric("Average weekly new users", f"{weekly.mean():,.0f}")
     col3.metric("Average monthly new users", f"{monthly.mean():,.0f}")
-
 
     st.altair_chart(chart, use_container_width=True)
 
