@@ -290,6 +290,20 @@ st.metric(
     "Anchor Yield Reserve supplement value, UST",
     f"{grouped_net_df[grouped_net_df.TO_LABEL=='anchor: Overseer'].AMOUNT.sum():,.0f}",
 )
+
+"""
+- [**Unknown UST recipient**](https://terrascope.info/mainnet/address/terra1sh5fa206j0yz27xcs8cyfpnhv2t8crtl6yregk): A new wallet has been sent UST from the main LFG address. It is unknown what this is for. Stay tuned!
+
+"""
+unknown_balance = (
+    grouped_net_df[(grouped_net_df.TO_LABEL == "Unknown UST recipient") & (grouped_net_df.CURRENCY =='UST')].AMOUNT.sum()
+    - grouped_net_df[(grouped_net_df.FROM_LABEL == "Unknown UST recipient") & (grouped_net_df.CURRENCY =='UST')].AMOUNT.sum()
+)
+st.metric(
+    "UST balance",
+    f"{unknown_balance:,.0f}",
+)
+
 "-----"
 st.subheader("Luna Burn 🌕🔥")
 """
