@@ -402,8 +402,10 @@ percentiles = summary.TOTAL_APPS.describe(
 percentiles
 
 st.header("Part 5: Bonus")
+"""
 
-
+Note, pairplot takes a bit of time to load...
+"""
 def corrfunc(x, y, ax=None, **kws):
     """Plot the correlation coefficient in the top left hand corner of a plot.
     https://stackoverflow.com/questions/50832204/show-correlation-values-in-pairplot-using-seaborn-in-python
@@ -443,10 +445,11 @@ def pairwise_plot():
     fig, ax = plt.subplots()
     g = sns.pairplot(pairplot_df)
     g.map_lower(corrfunc)
-    st.pyplot(g)
+    return g
 
 
-pairwise_plot()
+g = pairwise_plot()
+st.pyplot(g)
 
 
 with st.expander("Data Sources"):
