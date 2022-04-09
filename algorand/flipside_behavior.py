@@ -443,11 +443,10 @@ def pairwise_plot():
     fig, ax = plt.subplots()
     g = sns.pairplot(pairplot_df)
     g.map_lower(corrfunc)
-    return g
+    st.pyplot(g)
 
 
-g = pairwise_plot()
-st.pyplot(g)
+pairwise_plot()
 
 
 with st.expander("Data Sources"):
