@@ -17,7 +17,7 @@ The Flipside algorand bounty payout wallet is `TLR47MQCEIC6HSSYLXEI7NJIINWJESIT3
 )
 
 
-@st.cache(allow_output_mutation=True, ttl=3600*72)
+@st.cache(allow_output_mutation=True, ttl=3600 * 72)
 def load_data():
     # summary info
     q = "1b363710-ae95-410e-a2f7-b9d7c980d8d3"
@@ -62,15 +62,15 @@ row = [
     "TOTAL_ASAS",
 ]
 pairplot_df = summary[row]
-pairplot_df = pairplot_df.rename(columns=
-    {
-    "TIME_DIFF": "Time between creation and payment",
-    "ACCT_BALANCE": "ALGO Balance",
-    "TOTAL_PAID": "Flipside payment, total",
-    "AVG_PAYMENTS": "Flipside payment, average",
-    "PAYMENTS": "Flipside payment, count",
-    "TOTAL_APPS": "Total apps used",
-    "TOTAL_ASAS": "Total ASAs held",
+pairplot_df = pairplot_df.rename(
+    columns={
+        "TIME_DIFF": "Time between creation and payment",
+        "ACCT_BALANCE": "ALGO Balance",
+        "TOTAL_PAID": "Flipside payment, total",
+        "AVG_PAYMENTS": "Flipside payment, average",
+        "PAYMENTS": "Flipside payment, count",
+        "TOTAL_APPS": "Total apps used",
+        "TOTAL_ASAS": "Total ASAs held",
     }
 )
 st.header("NOTE:")
@@ -403,42 +403,25 @@ percentiles
 
 st.header("Part 5: Bonus")
 
-        # lr = linregress(ldf.Return.values, odf.Return.values)
-
-        # if k.pvalue < alpha and lr.pvalue < alpha:
-        #     if lr.intercept < 0:
-        #         intercept = f"- {-1*lr.intercept:.2f}"
-        #     else:
-        #         intercept = f"+ {lr.intercept:.2f}"
-        #     ax.text(
-        #         -0.15,
-        #         0.2,
-        #         fr"$Kendall's ~\tau:{k.correlation:.2f}$",
-        #         ha="center",
-        #         weight="semibold",
-        #     )
-        #     ax.text(
-        #         -0.15,
-        #         0.16,
-        #         fr"$y={lr.slope:.2f}x {intercept}$",
-        #         ha="center",
-        #         weight="semibold",
-        #     )
 
 def corrfunc(x, y, ax=None, **kws):
     """Plot the correlation coefficient in the top left hand corner of a plot.
     https://stackoverflow.com/questions/50832204/show-correlation-values-in-pairplot-using-seaborn-in-python
     """
     r, p = spearmanr(x, y)
-    lr = linregress(x,y)
+    lr = linregress(x, y)
     if lr.intercept < 0:
         intercept = f"- {-1*lr.intercept:.2f}"
     else:
         intercept = f"+ {lr.intercept:.2f}"
-    
+
     if p < 0.0025 and abs(r) > 0.35:
         ax = ax or plt.gca()
-        ax.annotate(f"r = {r:.2f}\ny={lr.slope:.2f}x {intercept}", xy=(0.1, 0.9), xycoords=ax.transAxes)
+        ax.annotate(
+            f"r = {r:.2f}\ny={lr.slope:.2f}x {intercept}",
+            xy=(0.1, 0.9),
+            xycoords=ax.transAxes,
+        )
 
 
 # column = list(reversed(row))
@@ -455,10 +438,15 @@ def corrfunc(x, y, ax=None, **kws):
 #     .interactive()
 # )
 # st.altair_chart(chart, use_container_width=True)
+@st.cache(allow_output_mutation=True, ttl=3600 * 72)
+def pairwise_plot():
+    fig, ax = plt.subplots()
+    g = sns.pairplot(pairplot_df)
+    g.map_lower(corrfunc)
+    return g
 
-fig, ax = plt.subplots()
-g = sns.pairplot(pairplot_df)
-g.map_lower(corrfunc)
+
+g = pairwise_plot()
 st.pyplot(g)
 
 
