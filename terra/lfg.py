@@ -216,12 +216,15 @@ components.html(graph, height=550, width=1000)
 # )
 
 
-latest_luna_price = (
-    net_data.sort_values(by="BLOCK_TIMESTAMP", ascending=False)
-    .LUNA_PRICE_USD.dropna()
-    .values[0]
-)
+# latest_luna_price = (
+#     net_data.sort_values(by="BLOCK_TIMESTAMP", ascending=False)
+#     .LUNA_PRICE_USD.dropna()
+#     .values[0]
+# )
 
+# pull LUNA price from API
+r = requests.get("https://api.extraterrestrial.money/v1/api/prices?symbol=LUNA").json()
+latest_luna_price = r['prices']['LUNA']['price']
 
 f"""
 The interactive network of all transactions to and from the [**LFG wallet**](https://finder.extraterrestrial.money/mainnet/account/terra1gr0xesnseevzt3h4nxr64sh5gk4dwrwgszx3nw) are shown above, where nodes are wallet addresses and edges represent transactions between them.
@@ -263,8 +266,8 @@ LFG's main wallet sends out LUNA to other wallets or smart contracts to complete
 - [**Luna Foundation Guard**](https://finder.extraterrestrial.money/mainnet/account/terra1gr0xesnseevzt3h4nxr64sh5gk4dwrwgszx3nw): Funded by Terraform labs, the main wallet of LFG.
 """
 lfg_balance_luna = (
-    grouped_net_df[grouped_net_df.TO_LABEL == "Luna Foundation Guard"].AMOUNT.sum()
-    - grouped_net_df[grouped_net_df.FROM_LABEL == "Luna Foundation Guard"].AMOUNT.sum()
+    grouped_net_df[(grouped_net_df.TO_LABEL == "Luna Foundation Guard") & (grouped_net_df.CURRENCY=='LUNA')].AMOUNT.sum()
+    - grouped_net_df[(grouped_net_df.FROM_LABEL == "Luna Foundation Guard") & (grouped_net_df.CURRENCY=='LUNA')].AMOUNT.sum()
 )
 
 col1, col2 = st.columns(2)
