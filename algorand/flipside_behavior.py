@@ -440,7 +440,7 @@ The number of apps used seems to be modestly correlated to total number of ASAs 
 
 Future work may expand on this initial exploratory analysis.
 """
-data_load_state = st.text("Loadingp pairplot...")
+data_load_state = st.text("Loading pairplot...")
 
 def corrfunc(x, y, ax=None, **kws):
     """Plot the correlation coefficient in the top left hand corner of a plot.
