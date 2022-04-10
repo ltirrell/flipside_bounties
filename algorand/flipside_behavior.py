@@ -159,9 +159,9 @@ An overall breakdown of payments is here:
 - Average per payout: {summary.AVG_PAYMENTS.mean():,.2f} ± {summary.AVG_PAYMENTS.std()/np.sqrt(len(summary)):,.2f} ALGO
 - Average number of payments per wallet: {summary.PAYMENTS.mean():,.2f} ± {summary.PAYMENTS.std()/np.sqrt(len(summary)):,.2f}
 and balance information is here:
-- Total balance, paid wallet: {summary.ACCT_BALANCE.sum():,.2f} ALGO
-- Average balance, paid wallet: {summary.ACCT_BALANCE.mean():,.2f} ± {summary.ACCT_BALANCE.std()/np.sqrt(len(summary)):,.2f} ALGO
-- Median balance, paid wallet: {summary.ACCT_BALANCE.median():,.2f} ALGO
+- Total balance, for wallets paid by Flipside: {summary.ACCT_BALANCE.sum():,.2f} ALGO
+- Average balance, for wallets paid by Flipside: {summary.ACCT_BALANCE.mean():,.2f} ± {summary.ACCT_BALANCE.std()/np.sqrt(len(summary)):,.2f} ALGO
+- Median balance, for wallets paid by Flipside: {summary.ACCT_BALANCE.median():,.2f} ALGO
 
 A very high percentage of the wallets receiving payments do not hold ALGO in that wallet.
 25% of wallets hold 0.2 ALGO or less, and over 75% hold less than the average amount paid by Flipside.
@@ -422,12 +422,23 @@ with st.expander("Data Summary: Applications"):
     percentiles
 st.header("Part 5: Summary")
 """
+To summarize, our analysis suggests:
+1. A large proportion of wallets are created specifcially to receive Flipside payments, with nearly a third created less than a day before payment and about half created within a week.
+2. Most have received more in payments from Flipside than they currently have as a balance.
+3. About 80% of users do not hold an ASA. Those that do have one tend to hold Yieldly
+4. Over two-thirds of wallets have used an algorand application. Most of them use 3 to 5 applications.
 
 """
 
 st.header("Part 6: Bonus")
 """
-Note, pairplot takes a bit of time to load...
+We computed a pairplot to see if there are any interesting correlations between the various metrics we analyzed. Significant correlations that are greater than 0.35 are shown in the top corner of the individual comparisons.
+
+There are several correlations between payments (the total amount, the count, and average) which are to be expected.
+
+The number of apps used seems to be modestly correlated to total number of ASAs held, age of wallet and payments received.
+
+Future work may expand on this initial exploratory analysis.
 """
 data_load_state = st.text("Loadingp pairplot...")
 
