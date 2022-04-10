@@ -16,6 +16,8 @@ The Flipside algorand bounty payout wallet is `TLR47MQCEIC6HSSYLXEI7NJIINWJESIT3
 """
 )
 
+"This dashboard investigates the behavior of wallets which recieved payment from Flipside Crypto for completing Algorand bounties"
+
 
 @st.cache(allow_output_mutation=True, ttl=3600 * 72)
 def load_data():
@@ -73,8 +75,7 @@ pairplot_df = pairplot_df.rename(
         "TOTAL_ASAS": "Total ASAs held",
     }
 )
-st.header("NOTE:")
-"This is currently a work in progress. All info is here but needs to be written up and described..."
+
 st.header("Part 1: Creation date of wallets paid by Flipside")
 st.caption(
     """
@@ -82,6 +83,14 @@ Chart the creation date of the wallets that have been paid out by the Flipside A
 - Do we see people creating wallets to answer flipside algorand bounty questions?
 """
 )
+time_diff_percentiles = summary.TIME_DIFF.describe(
+    percentiles=[0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 0.999]
+)
+f"""
+There were **{time_diff_percentiles["count"]}** unique wallets paid with the Flipside Algorand address.
+Plotting the monthly creation date compared to the date of first payment from Flipside, it appears that a large proportion of wallets are created around the time of bounty questions.
+There are very few wallets ({len(summary[summary.CREATION_DATETIME < "2021-11-11"])}, {len(summary[summary.CREATION_DATETIME < "2021-11-11"]) / time_diff_percentiles["count"]:.2%}) created more than a month before Flipside started to pay for Algorand bounties.
+"""
 combined_histogram = (
     alt.Chart(m)
     .mark_bar()
@@ -98,6 +107,10 @@ combined_histogram = (
 ).interactive()
 st.altair_chart(combined_histogram, use_container_width=True)
 
+f"""
+Breaking down the difference (in days) between wallet creation and first payment, over 25% of wallets were created on the same day as the first payment, and about 50% were created within a week of first payment.
+Nearly 90% are created within a month of first payment.
+"""
 
 time_diff = (
     alt.Chart(summary)
@@ -121,12 +134,12 @@ time_diff = (
     )
 ).interactive()
 st.altair_chart(time_diff, use_container_width=True)
-percentiles = summary.TIME_DIFF.describe(
-    percentiles=[0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 0.999]
-)
-"Time differences:"
-percentiles
 
+f"""
+Overall, it appears a large proportion of wallets are created for the purpose of recieving funds for an Algorand bounty suggesting that either payments are sent to "burner wallets" or new users to the Algorand ecosystem.
+"""
+with st.expander("Data Summary: Time Differences"):
+    time_diff_percentiles
 
 # ---#
 st.header("Part 2: Balances and payment summaries")
@@ -138,6 +151,21 @@ Using `algorand.account`:
 - What is the total amount Flipside has paid out to wallets and what is the total amount of ALGOs these wallets are currently holding (use balance in the algroand.account table for balance).
     """
 )
+f"""
+An overall breakdown of payments is here:
+- Total number of wallets paid: {len(summary):,} ALGO
+- Total paid out: {summary.TOTAL_PAID.sum():,.2f} ALGO
+- Average paid out, per wallet: {summary.TOTAL_PAID.mean():,.2f} ± {summary.TOTAL_PAID.std()/np.sqrt(len(summary)):,.2f} ALGO
+- Average per payout: {summary.AVG_PAYMENTS.mean():,.2f} ± {summary.AVG_PAYMENTS.std()/np.sqrt(len(summary)):,.2f} ALGO
+- Average number of payments per wallet: {summary.PAYMENTS.mean():,.2f} ± {summary.PAYMENTS.std()/np.sqrt(len(summary)):,.2f}
+and balance information is here:
+- Total balance, paid wallet: {summary.ACCT_BALANCE.sum():,.2f} ALGO
+- Average balance, paid wallet: {summary.ACCT_BALANCE.mean():,.2f} ± {summary.ACCT_BALANCE.std()/np.sqrt(len(summary)):,.2f} ALGO
+- Median balance, paid wallet: {summary.ACCT_BALANCE.median():,.2f} ALGO
+
+A very high percentage of the wallets receiving payments do not hold ALGO in that wallet.
+25% of wallets hold 0.2 ALGO or less, and over 75% hold less than the average amount paid by Flipside.
+"""
 balances = (
     alt.Chart(summary)
     .transform_joinaggregate(total="count(*)")
@@ -161,13 +189,13 @@ balances = (
 ).interactive()
 st.altair_chart(balances, use_container_width=True)
 
-"""Acount balances:"""
-percentiles = summary.ACCT_BALANCE.describe(
-    percentiles=[0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 0.999]
-)
-percentiles
-# percentiles.loc["mean"]
+f"""
+Looking at payments (left bar chart below), we see about 75% of wallets recieved about the average payment or less
+More than 95% of the wallets were paid less than 200 ALGO (not shown are 78 wallets paid more than this amount).
 
+Funds seem to be removed from the wallets that were paid for bounties, and as such the proportion of the wallet balance that is from payments (left chart) is generally higher than 100%.
+75% of wallets have been paid more than their current balances, and about 10% have a balance of 0 ALGO currently, so no percentage can be calculated
+"""
 paid_by_flipside = (
     alt.Chart(summary)
     .transform_joinaggregate(total="count(*)")
@@ -215,60 +243,48 @@ balances_percentage = (
 ).interactive()
 st.altair_chart(paid_by_flipside | balances_percentage, use_container_width=True)
 
-"""Payout proportion of balance:"""
-percentiles = summary.PAYMENT_PROPORTION_OF_BALANCE.describe(
-    percentiles=[
-        0.05,
-        0.1,
-        0.25,
-        0.5,
-        0.6,
-        0.65,
-        0.75,
-        0.8,
-        0.85,
-        0.9,
-    ]
-)
-percentiles
-
-"""Total Paid:"""
-percentiles = summary.TOTAL_PAID.describe(
-    percentiles=[
-        0.01,
-        0.05,
-        0.1,
-        0.25,
-        0.5,
-        0.75,
-        0.9,
-        0.95,
-        0.99,
-    ]
-)
-percentiles
-
-
-f"""
-Total number of wallets paid: {len(summary):,} ALGO
-
-Total paid out: {summary.TOTAL_PAID.sum():,.2f} ALGO
-
-Total balance, paid wallet: {summary.ACCT_BALANCE.sum():,.2f} ALGO
-
-Average balance, paid wallet: {summary.ACCT_BALANCE.mean():,.2f} ± {summary.ACCT_BALANCE.std()/np.sqrt(len(summary)):,.2f} ALGO
-
-Median balance, paid wallet: {summary.ACCT_BALANCE.median():,.2f} ± {summary.ACCT_BALANCE.std()/np.sqrt(len(summary)):,.2f} ALGO
+with st.expander("Data Summary: Account balances"):
+    """Account balances:"""
+    percentiles = summary.ACCT_BALANCE.describe(
+        percentiles=[0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 0.999]
+    )
+    percentiles
+    """Payments per wallet:"""
+    percentiles = summary.TOTAL_PAID.describe(
+        percentiles=[
+            0.01,
+            0.05,
+            0.1,
+            0.25,
+            0.5,
+            0.75,
+            0.9,
+            0.95,
+            0.99,
+        ]
+    )
+    percentiles
+    """Payout proportion of balance:"""
+    percentiles = summary.PAYMENT_PROPORTION_OF_BALANCE.describe(
+        percentiles=[
+            0.05,
+            0.1,
+            0.25,
+            0.5,
+            0.6,
+            0.65,
+            0.75,
+            0.8,
+            0.85,
+            0.9,
+        ]
+    )
+    percentiles
 
 
-Average paid out, per wallet: {summary.TOTAL_PAID.mean():,.2f} ± {summary.TOTAL_PAID.std()/np.sqrt(len(summary)):,.2f} ALGO
 
+# percentiles.loc["mean"]
 
-Average per payout: {summary.AVG_PAYMENTS.mean():,.2f} ± {summary.AVG_PAYMENTS.std()/np.sqrt(len(summary)):,.2f} ALGO
-
-Average number of payments per wallet: {summary.PAYMENTS.mean():,.2f} ± {summary.PAYMENTS.std()/np.sqrt(len(summary)):,.2f}
-
-"""
 
 
 st.header("Part 3: ASA Breakdown")
@@ -279,6 +295,15 @@ Using `algorand.account_asset` table, let's look at what other ASAs wallets (tha
 - Display a count of the number of wallets that are holding this asset and display the percent of flipside bounty wallets that hold this asset.
     """
 )
+asa_users = summary[summary.TOTAL_ASAS > 0]
+f"""
+There are {len(asa)} ASAs held by users, with {len(asa[asa.WALLETS_WITH_ASSET > 1])} held by more than one wallet.
+{len(asa_users) / len(summary):.2%} of users hold at least one ASA.
+
+By far the most popular ASA is Yieldly, held by about 15% of wallets. No other ASA is held by more than about 1.5% of wallets.
+This may be due to the fact that a Flipside scanvenger hunt involved using Yieldly.
+"""
+
 
 top_asa_chart = (
     alt.Chart(top_asas)
@@ -306,15 +331,8 @@ top_asa_chart = (
 )
 st.altair_chart(top_asa_chart, use_container_width=True)
 
-f"""
-Total number of ASAs held: {len(asa)}
-
-ASAs held by more than 1 wallet: {len(asa[asa.WALLETS_WITH_ASSET > 1])}
 """
-
-app_users = summary[summary.TOTAL_ASAS > 0]
-f"""
-Percentage of users holding at least one ASA: {len(app_users) / len(summary):.2%}
+For further analysis, the percentage of wallets holding specific numbers of ASAs is shown bellow. Over 90% of wallets hold 1 or 0 ASAs, and 95% of wallets hold 2 or less. There is one wallet holding 163 ASAs!
 """
 
 asas = (
@@ -340,12 +358,12 @@ asas = (
 ).interactive()
 st.altair_chart(asas, use_container_width=True)
 
-
-"""Total ASAS:"""
-percentiles = summary.TOTAL_ASAS.describe(
-    percentiles=[0.1, 0.5, 0.75, 0.9, 0.95, 0.99, 0.999, 0.9999]
-)
-percentiles
+with st.expander("Data Summary: ASAs"):
+    """Total ASAS:"""
+    percentiles = summary.TOTAL_ASAS.describe(
+        percentiles=[0.1, 0.5, 0.75, 0.9, 0.95, 0.99, 0.999, 0.9999]
+    )
+    percentiles
 
 
 st.header("Part 4: Application usage")
@@ -358,7 +376,9 @@ Using `algorand.application_call_transaction`,
 )
 app_users = summary[summary.TOTAL_APPS > 0]
 f"""
-Percentage of users inerteracting with an Algorand application: {len(app_users) / len(summary):.2%}
+{len(app_users) / len(summary):.2%} percent of wallets have interacted with an Algorand application.
+It appears a small number (~2%) of wallets have used 1 or 2 applications, and most users have interacted with 3-5 applications (over 50%).
+Only the top 10% of wallets have used more than 5 applications.
 """
 
 apps = (
@@ -384,28 +404,33 @@ apps = (
 ).interactive()
 st.altair_chart(apps, use_container_width=True)
 
-
-"""Total Apss:"""
-percentiles = summary.TOTAL_APPS.describe(
-    percentiles=[
-        0.01,
-        0.05,
-        0.1,
-        0.25,
-        0.5,
-        0.75,
-        0.9,
-        0.95,
-        0.99,
-    ]
-)
-percentiles
-
-st.header("Part 5: Bonus")
+with st.expander("Data Summary: Applications"):
+    """Total Apps:"""
+    percentiles = summary.TOTAL_APPS.describe(
+        percentiles=[
+            0.01,
+            0.05,
+            0.1,
+            0.25,
+            0.5,
+            0.75,
+            0.9,
+            0.95,
+            0.99,
+        ]
+    )
+    percentiles
+st.header("Part 5: Summary")
 """
 
+"""
+
+st.header("Part 6: Bonus")
+"""
 Note, pairplot takes a bit of time to load...
 """
+data_load_state = st.text("Loadingp pairplot...")
+
 def corrfunc(x, y, ax=None, **kws):
     """Plot the correlation coefficient in the top left hand corner of a plot.
     https://stackoverflow.com/questions/50832204/show-correlation-values-in-pairplot-using-seaborn-in-python
@@ -450,8 +475,9 @@ def pairwise_plot():
 
 g = pairwise_plot()
 st.pyplot(g)
+data_load_state.text("")
 
-
+st.header("Appendix")
 with st.expander("Data Sources"):
     """
     Data was queried from Flipside Crypto following suggestions from the bounties. They are available here:
