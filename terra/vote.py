@@ -595,5 +595,7 @@ For validator voting, the [Terra LCD](https://lcd.terra.dev/swagger/) was used t
 Validator vote counts were derived by subtracting the non-validator votes from the total votes per each proposal.
 
 In the `terra.gov_vote` table, the voting power is not accurate for the validator address-- when it is not null, the value is the amount in the terra address owned by the validator, and not the total amount delegated to that validator.
+
+Thanks to user hfuhruhurr#8781 (on Flipside Crypto Discord) for discussions on this topic!
 """
 )
