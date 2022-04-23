@@ -52,6 +52,13 @@ def load_proposal_data():
     proposal_df["voting_end_time"] = pd.to_datetime(
         proposal_df["voting_end_time"], errors="coerce"
     )
+    proposal_df["total_votes"] = (
+        proposal_df["Yes"]
+        + proposal_df["No"]
+        + proposal_df["NoWithVeto"]
+        + proposal_df["Abstain"]
+    )
+    proposal_df["proportion_yes"] = proposal_df["Yes"] / proposal_df["total_votes"]
 
     long_proposal_df = proposal_df.melt(
         value_vars=[
@@ -69,6 +76,8 @@ def load_proposal_data():
             "voting_start_time",
             "voting_end_time",
             "status",
+            "total_votes",
+            "proportion_yes",
         ],
         var_name="option",
         value_name="voting_power",
@@ -167,12 +176,12 @@ def get_proposal_info(df, proposal_status):
 
 df = load_data()
 proposal_df, merged_df = load_proposal_data()
-open_proposals = proposal_df[proposal_df.status=="PROPOSAL_STATUS_VOTING_PERIOD"]
+open_proposals = proposal_df[proposal_df.status == "PROPOSAL_STATUS_VOTING_PERIOD"]
 
 
 st.header("LUNA governance overview")
 st.write(
-"""
+    """
 Terra users delegate their LUNA to a validator to particpate in the security of the blockchain.
 By doing so, users get the right to vote on proposals, in addition to staking yield.
 
@@ -194,66 +203,340 @@ Fulfill you civic duty and vote!
 col1, col2 = st.columns(2)
 col1.metric("Open Governance Proposals", len(open_proposals))
 col2.write(
-        "[Vote here!](https://station.terra.money/gov#PROPOSAL_STATUS_VOTING_PERIOD)"
-    )
+    "[Vote here!](https://station.terra.money/gov#PROPOSAL_STATUS_VOTING_PERIOD)"
+)
 
-st.subheader("Past votes")
+st.subheader("Voting breakdown")
 st.write(
-"""
-Results of past governance votes are shown below, with both thevote perentages and the amount of LUNA used for each voting option.
+    """
+Results of past governance votes are shown below, with both the vote perentages and the amount of LUNA used for each voting option.
 """
 )
-completed_df = merged_df[merged_df["status"].isin(["PROPOSAL_STATUS_REJECTED", "PROPOSAL_STATUS_PASSED"])]
+completed_df = merged_df[
+    merged_df["status"].isin(["PROPOSAL_STATUS_REJECTED", "PROPOSAL_STATUS_PASSED"])
+]
 
-chart_percentage = alt.Chart(completed_df).mark_bar().encode(
-    alt.X("proposal_id:N",axis=None, title="Proposals"),
-    alt.Y("voting_power", stack='normalize', title="Vote Percentage"),
-    alt.Color('option', sort=['Yes', 'No', 'NoWithVeto', 'Abstain'], legend=alt.Legend(orient='bottom'), title='Voting Option'),
-    tooltip= [
-        alt.Tooltip('proposal_id', title="Proposal ID"),
-        alt.Tooltip('title', title='Proposal Title'),
-        alt.Tooltip('option', title='Option'),
-        alt.Tooltip('voting_power', title='Voting Power, LUNA', format=',.0f'),
-        alt.Tooltip('status', title='Status'),
-        alt.Tooltip('voting_end_time', title='Vote end date'),
-    ]
-).properties(width=800)
-chart_values = alt.Chart(completed_df).mark_bar().encode(
-    alt.X("proposal_id:N",axis=None, title="Proposals"),
-    alt.Y("voting_power", title="Voting Power (LUNA)"),
-    alt.Color('option', sort=['Yes', 'No', 'NoWithVeto', 'Abstain']),
-    tooltip= [
-        alt.Tooltip('proposal_id', title="Proposal ID"),
-        alt.Tooltip('title', title='Proposal Title'),
-        alt.Tooltip('option', title='Option'),
-        alt.Tooltip('voting_power', title='Voting Power, LUNA', format=',.0f'),
-        alt.Tooltip('status', title='Status'),
-        alt.Tooltip('voting_end_time', title='Vote end date'),
-    ]
-).properties(width=800)
+chart_percentage = (
+    alt.Chart(completed_df)
+    .mark_bar()
+    .encode(
+        alt.X("proposal_id:N", axis=None, title="Proposals"),
+        alt.Y("voting_power", stack="normalize", title="Vote Percentage"),
+        alt.Color(
+            "option",
+            sort=["Yes", "No", "NoWithVeto", "Abstain"],
+            legend=alt.Legend(orient="bottom"),
+            title="Voting Option",
+        ),
+        tooltip=[
+            alt.Tooltip("proposal_id", title="Proposal ID"),
+            alt.Tooltip("title", title="Proposal Title"),
+            alt.Tooltip("option", title="Option"),
+            alt.Tooltip("voting_power", title="Voting Power, LUNA", format=",.0f"),
+            alt.Tooltip("status", title="Status"),
+            alt.Tooltip("voting_end_time", title="Vote end date"),
+        ],
+    )
+    .properties(width=800)
+)
+chart_values = (
+    alt.Chart(completed_df)
+    .mark_bar()
+    .encode(
+        alt.X("proposal_id:N", axis=None, title="Proposals"),
+        alt.Y("voting_power", title="Voting Power (LUNA)"),
+        alt.Color("option", sort=["Yes", "No", "NoWithVeto", "Abstain"]),
+        tooltip=[
+            alt.Tooltip("proposal_id", title="Proposal ID"),
+            alt.Tooltip("title", title="Proposal Title"),
+            alt.Tooltip("option", title="Option"),
+            alt.Tooltip("voting_power", title="Voting Power, LUNA", format=",.0f"),
+            alt.Tooltip("status", title="Status"),
+            alt.Tooltip("voting_end_time", title="Vote end date"),
+        ],
+    )
+    .properties(width=800)
+)
 st.altair_chart(chart_percentage & chart_values, use_container_width=True)
 
 
 total_proposals = len(proposal_df.proposal_id.unique())
-completed_votes = len(proposal_df[
-    proposal_df.status.isin(["PROPOSAL_STATUS_REJECTED", "PROPOSAL_STATUS_PASSED"])])
-no_vote = len(proposal_df[proposal_df.status=="PROPOSAL_STATUS_DEPOSIT_PERIOD"])
-open_proposals = len(proposal_df[proposal_df.status=="PROPOSAL_STATUS_VOTING_PERIOD"])
-rejected_proposals = len(proposal_df[proposal_df.status=="PROPOSAL_STATUS_REJECTED"])
-passed_proposals = len(proposal_df[proposal_df.status=="PROPOSAL_STATUS_PASSED"])
+completed_votes = len(
+    proposal_df[
+        proposal_df.status.isin(["PROPOSAL_STATUS_REJECTED", "PROPOSAL_STATUS_PASSED"])
+    ]
+)
+no_vote = len(proposal_df[proposal_df.status == "PROPOSAL_STATUS_DEPOSIT_PERIOD"])
+open_proposals = len(proposal_df[proposal_df.status == "PROPOSAL_STATUS_VOTING_PERIOD"])
+rejected_proposals = len(proposal_df[proposal_df.status == "PROPOSAL_STATUS_REJECTED"])
+passed_proposals = len(proposal_df[proposal_df.status == "PROPOSAL_STATUS_PASSED"])
 
 
-st.write("To make a governance proposal, a minimum deposit threshold of 50 LUNA needs to be met. Without this, the proposal will not be voted upon")
+st.write(
+    "To make a governance proposal, a minimum deposit threshold of 50 LUNA needs to be met. Without this, the proposal will not be voted upon. Additionally, a quorum of votes need to be participate in the proposal in order for a vote to pass."
+)
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Proposals", total_proposals)
 col2.metric("Completed Votes", completed_votes)
 col3.metric("Proposals without votes", no_vote)
 col4.metric("Open Proposals", open_proposals)
 
+
+st.write(
+    f"""
+Here is the breakdown of proposals that passed governance.
+Of the {total_proposals} that recieved the minimum deposit and were sent to a vote, {passed_proposals} passed and {rejected_proposals} failed, for a {passed_proposals/completed_votes:.1%} success rate.
+"""
+)
+col1, col2, col3, col4 = st.columns(4)
 col1.metric("Passed Proposals", passed_proposals)
 col2.metric("Passed Percentage", f"{passed_proposals/completed_votes:.1%}")
 col3.metric("Rejected Proposals", rejected_proposals)
 col4.metric("Rejected Percentage", f"{rejected_proposals/completed_votes:.1%}")
+
+
+st.subheader("Yes we can!")
+yes_summary = proposal_df[
+    proposal_df.status.isin(["PROPOSAL_STATUS_REJECTED", "PROPOSAL_STATUS_PASSED"])
+][["Yes", "status", "proportion_yes", "total_votes", "proposal_id"]]
+st.write(
+    f"""Next, we'll look exclusively at votes who voted "Yes" on the {completed_votes} completed proposals.
+- Overall, a voting power of {yes_summary.Yes.sum():,.0f} LUNA voted 'Yes' in governance proposals out of a total of {yes_summary.total_votes.sum():,.0f} voted LUNA.
+    - For all votes: {yes_summary.Yes.mean():,.1f} ± {yes_summary.Yes.std()/np.sqrt(len(yes_summary)):,.1f} LUNA per vote
+    - For votes that passed: {yes_summary[yes_summary.status=='PROPOSAL_STATUS_PASSED'].Yes.mean():,.1f} ± {yes_summary[yes_summary.status=='PROPOSAL_STATUS_PASSED'].Yes.std()/np.sqrt(len(yes_summary[yes_summary.status=='PROPOSAL_STATUS_PASSED'])):,.1f} LUNA per vote
+    - For votes that were rejected: {yes_summary[yes_summary.status=='PROPOSAL_STATUS_REJECTED'].Yes.mean():,.1f} ± {yes_summary[yes_summary.status=='PROPOSAL_STATUS_REJECTED'].Yes.std()/np.sqrt(len(yes_summary[yes_summary.status=='PROPOSAL_STATUS_REJECTED'])):,.1f} LUNA per vote
+- An average of {yes_summary.proportion_yes.mean():.1%} ± {yes_summary.proportion_yes.std()/np.sqrt(len(yes_summary)):.1%} voted Yes for proposals
+    - For votes that passed: {yes_summary[yes_summary.status=='PROPOSAL_STATUS_PASSED'].proportion_yes.mean():.1%} ± {yes_summary[yes_summary.status=='PROPOSAL_STATUS_PASSED'].proportion_yes.std()/np.sqrt(len(yes_summary[yes_summary.status=='PROPOSAL_STATUS_PASSED'])):.1%}
+    - For votes that were rejected: {yes_summary[yes_summary.status=='PROPOSAL_STATUS_REJECTED'].proportion_yes.mean():.1%} ± {yes_summary[yes_summary.status=='PROPOSAL_STATUS_REJECTED'].proportion_yes.std()/np.sqrt(len(yes_summary[yes_summary.status=='PROPOSAL_STATUS_REJECTED'])):.1%}
+There is quite a clear slant for voting Yes on proposals.
+Also, proposals are generally passed or rejected by a wide margin: nearly 90% votes for passed proposals are Yes on average.
+For rejected proposals, about 69% of votes are No on average. This may be skewed lower, as some rejected proposals (such as proposal 5) had low percentage of No votes but did not meet Quorum so were rejected
+"""
+)
+yes_df = (
+    completed_df[completed_df.option == "Yes"]
+    .rename(
+        columns={"voting_power": "Validator", "non_val_voting_power": "Regular wallet"}
+    )
+    .melt(
+        id_vars=[
+            "proposal_id",
+            "title",
+            "voting_end_time",
+            "submit_time",
+            "status",
+            "option",
+            "total_votes",
+        ],
+        value_vars=["Validator", "Regular wallet"],
+        var_name="Voter Type",
+        value_name="Voting Power",
+    )
+).sort_values(by=["Voter Type", "proposal_id"])
+yes_df["proportion_yes"] = yes_df["Voting Power"] / yes_df.total_votes
+
+# TODO: work on this later?
+# non_val_voting_power = completed_df.groupby("proposal_id").non_val_voting_power.sum()
+# val_voting_power = completed_df.groupby("proposal_id").val_voting_power.sum()
+# total_votes_category = pd.concat([non_val_voting_power, val_voting_power]).reset_index(drop=True)
+
+# yes_df["total_votes_category"] = total_votes_category
+# yes_df["proportion_yes_category"] = yes_df["Voting Power"] / yes_df.total_votes_category
+
+st.write(
+    """Looking at histograms of this data (note that bars are not stacked), we see overall low Voting Power voting Yes for rejected proposals.
+For passed proposals, the Voting power amount is more spread across the range of values though has a much higher minimum value.
+
+The proportion voting Yes shows a high count of records for passed proposals.
+There are 6 rejected proposals with a >50% proportion Yes, suggested that these did not meet quorum and were thus rejected.
+    """
+)
+chart_voting_power = (
+    alt.Chart(
+        yes_df.groupby(["proposal_id", "status"])["Voting Power"].sum().reset_index()
+    )
+    .mark_bar(binSpacing=0, opacity=0.65)
+    .encode(
+        alt.X("Voting Power", bin=alt.Bin(maxbins=25)),
+        alt.Y(
+            "count()",
+            stack=None,
+        ),
+        alt.Order(
+            "count(Voting Power)",
+            sort="descending",
+        ),
+        alt.Color(
+            "status",
+        ),
+        tooltip=[
+            alt.Tooltip("status", title="Vote result"),
+            alt.Tooltip(
+                "average(Voting Power)",
+                title="Average Voting Power in bin, LUNA",
+                format=",.0f",
+            ),
+            alt.Tooltip("count(Voting Power)", title="Proposals in bin", format=",.0f"),
+        ],
+    )
+    .properties(width=800)
+).interactive()
+
+chart_proportion = (
+    alt.Chart(
+        yes_df.groupby(["proposal_id", "status"])["proportion_yes"].mean().reset_index()
+    )
+    .mark_bar(binSpacing=0, opacity=0.65)
+    .encode(
+        alt.X(
+            "proportion_yes",
+            bin=alt.Bin(maxbins=25),
+            title="Proportion voting Yes (binned)",
+        ),
+        alt.Y(
+            "count()",
+            stack=None,
+        ),
+        alt.Order(
+            "count(proportion_yes)",
+            sort="descending",
+        ),
+        alt.Color("status", legend=alt.Legend(orient="bottom", title="Vote results")),
+        tooltip=[
+            alt.Tooltip("status", title="Vote result"),
+            alt.Tooltip(
+                "average(proportion_yes)",
+                title="Average Proportion voting Yes in bin",
+                format=",.2%",
+            ),
+            alt.Tooltip(
+                "count(proportion_yes)", title="Proposals in bin", format=",.0f"
+            ),
+        ],
+    )
+    .properties(width=800)
+).interactive()
+st.altair_chart(chart_voting_power & chart_proportion, use_container_width=True)
+
+
+st.write(
+    f"""
+The vast majority of voting power comes from Validators. For regular wallets:
+- A voting power of {yes_df[yes_df["Voter Type"]=="Regular wallet"]["Voting Power"].sum():,.0f} LUNA voted 'Yes' in governance proposals out of a total of {yes_df[yes_df["Voter Type"]=="Regular wallet"].total_votes.sum():,.0f} voted LUNA came from regular wallets.
+    - For all votes: {yes_df[yes_df["Voter Type"]=="Regular wallet"]["Voting Power"].mean():,.1f} ± {yes_df[yes_df["Voter Type"]=="Regular wallet"]["Voting Power"].std()/np.sqrt(len(yes_df[yes_df["Voter Type"]=="Regular wallet"])):,.1f} LUNA per vote
+    - For votes that passed: {yes_df[yes_df["Voter Type"]=="Regular wallet"][yes_df[yes_df["Voter Type"]=="Regular wallet"].status=='PROPOSAL_STATUS_PASSED']["Voting Power"].mean():,.1f} ± {yes_df[yes_df["Voter Type"]=="Regular wallet"][yes_df[yes_df["Voter Type"]=="Regular wallet"].status=='PROPOSAL_STATUS_PASSED']["Voting Power"].std()/np.sqrt(len(yes_df[yes_df["Voter Type"]=="Regular wallet"][yes_df[yes_df["Voter Type"]=="Regular wallet"].status=='PROPOSAL_STATUS_PASSED'])):,.1f} LUNA per vote
+    - For votes that were rejected: {yes_df[yes_df["Voter Type"]=="Regular wallet"][yes_df[yes_df["Voter Type"]=="Regular wallet"].status=='PROPOSAL_STATUS_REJECTED']["Voting Power"].mean():,.1f} ± {yes_df[yes_df["Voter Type"]=="Regular wallet"][yes_df[yes_df["Voter Type"]=="Regular wallet"].status=='PROPOSAL_STATUS_REJECTED']["Voting Power"].std()/np.sqrt(len(yes_df[yes_df["Voter Type"]=="Regular wallet"][yes_df[yes_df["Voter Type"]=="Regular wallet"].status=='PROPOSAL_STATUS_REJECTED'])):,.1f} LUNA per vote
+- An average of {yes_df[yes_df["Voter Type"]=="Regular wallet"].proportion_yes.mean():.1%} ± {yes_df[yes_df["Voter Type"]=="Regular wallet"].proportion_yes.std()/np.sqrt(len(yes_df[yes_df["Voter Type"]=="Regular wallet"])):.1%} of Yes votes came from regular wallets.
+    - For votes that passed: {yes_df[yes_df["Voter Type"]=="Regular wallet"][yes_df[yes_df["Voter Type"]=="Regular wallet"].status=='PROPOSAL_STATUS_PASSED'].proportion_yes.mean():.1%} ± {yes_df[yes_df["Voter Type"]=="Regular wallet"][yes_df[yes_df["Voter Type"]=="Regular wallet"].status=='PROPOSAL_STATUS_PASSED'].proportion_yes.std()/np.sqrt(len(yes_df[yes_df["Voter Type"]=="Regular wallet"][yes_df[yes_df["Voter Type"]=="Regular wallet"].status=='PROPOSAL_STATUS_PASSED'])):.1%}
+    - For votes that were rejected: {yes_df[yes_df["Voter Type"]=="Regular wallet"][yes_df[yes_df["Voter Type"]=="Regular wallet"].status=='PROPOSAL_STATUS_REJECTED'].proportion_yes.mean():.1%} ± {yes_df[yes_df["Voter Type"]=="Regular wallet"][yes_df[yes_df["Voter Type"]=="Regular wallet"].status=='PROPOSAL_STATUS_REJECTED'].proportion_yes.std()/np.sqrt(len(yes_df[yes_df["Voter Type"]=="Regular wallet"][yes_df[yes_df["Voter Type"]=="Regular wallet"].status=='PROPOSAL_STATUS_REJECTED'])):.1%}
+
+At most, regular wallets represented around 40% of the vote of 2 proposals, with most votes only having around 1% coming from regular users.
+    """
+)
+
+chart_voting_power = (
+    alt.Chart(yes_df)
+    .mark_bar(binSpacing=0, opacity=0.65)
+    .encode(
+        alt.X("Voting Power", bin=alt.Bin(maxbins=25)),
+        alt.Y(
+            "count()",
+            stack=None,
+        ),
+        alt.Order(
+            "count(Voting Power)",
+            sort="descending",
+        ),
+        alt.Color(
+            "Voter Type",
+        ),
+        tooltip=[
+            alt.Tooltip("Voter Type"),
+            alt.Tooltip(
+                "average(Voting Power)",
+                title="Average Voting Power in bin, LUNA",
+                format=",.0f",
+            ),
+            alt.Tooltip("count(Voting Power)", title="Proposals in bin", format=",.0f"),
+        ],
+    )
+    .properties(width=800)
+).interactive()
+
+chart_proportion = (
+    alt.Chart(yes_df)
+    .mark_bar(binSpacing=0, opacity=0.65)
+    .encode(
+        alt.X(
+            "proportion_yes",
+            bin=alt.Bin(maxbins=25),
+            title="Proportion voting Yes (binned)",
+        ),
+        alt.Y(
+            "count()",
+            stack=None,
+        ),
+        alt.Order(
+            "count(proportion_yes)",
+            sort="descending",
+        ),
+        alt.Color("Voter Type", legend=alt.Legend(orient="bottom")),
+        tooltip=[
+            alt.Tooltip("Voter Type"),
+            alt.Tooltip(
+                "average(proportion_yes)",
+                title="Average Proportion voting Yes in bin",
+                format=",.2%",
+            ),
+            alt.Tooltip(
+                "count(proportion_yes)", title="Proposals in bin", format=",.0f"
+            ),
+        ],
+    )
+    .properties(width=800)
+).interactive()
+st.altair_chart(chart_voting_power & chart_proportion, use_container_width=True)
+
+
+# TODO: work on this later?
+# st.write(
+# """
+
+# """
+# )
+# chart_proportion = (
+#     alt.Chart(yes_df)
+#     .mark_bar(binSpacing=0, opacity=0.65)
+#     .encode(
+#         alt.X(
+#             "proportion_yes_category",
+#             bin=alt.Bin(maxbins=25),
+#             title="Proportion voting Yes (binned)",
+#         ),
+#         alt.Y(
+#             "count()",
+#             stack=None,
+#         ),
+#         alt.Order(
+#             "count(proportion_yes_category)",
+#             sort="descending",
+#         ),
+#         alt.Color("Voter Type", legend=alt.Legend(orient="bottom")),
+#         tooltip=[
+#             alt.Tooltip("Voter Type"),
+#             alt.Tooltip(
+#                 "average(proportion_yes_category)",
+#                 title="Average Proportion voting Yes in bin",
+#                 format=",.2%",
+#             ),
+#             alt.Tooltip(
+#                 "count(proportion_yes_category)", title="Proposals in bin", format=",.0f"
+#             ),
+#         ],
+#     )
+#     .properties(width=800)
+# ).interactive()
+# st.altair_chart(chart_proportion, use_container_width=True)
 
 
 st.header("Proposal Details")
@@ -269,13 +552,14 @@ col1, col2 = st.columns([1, 3])
 proposal_status = col1.radio("Proposal status", status_dict.keys(), 0)
 
 
-
 proposal_titles, sub_df = get_proposal_info(proposal_df, status_dict[proposal_status])
 proposals = col2.selectbox("Proposals", proposal_titles, 0)
 
 cols = st.columns(2)
-if proposals != 'All':
-    sub_df = sub_df[sub_df.proposal_id == int(proposals.split(':')[0])].reset_index(drop=True)
+if proposals != "All":
+    sub_df = sub_df[sub_df.proposal_id == int(proposals.split(":")[0])].reset_index(
+        drop=True
+    )
     cols = st.columns(1)
 
 for i, x in sub_df.iterrows():
@@ -291,7 +575,7 @@ for i, x in sub_df.iterrows():
             f"**Status**: {list(status_dict.keys())[list(status_dict.values()).index(x.status)]}"
         )
 
-        if x.status in ["PROPOSAL_STATUS_REJECTED","PROPOSAL_STATUS_PASSED"]:
+        if x.status in ["PROPOSAL_STATUS_REJECTED", "PROPOSAL_STATUS_PASSED"]:
             st.write(f"**Vote Start Date**: {x['voting_start_time']:%Y-%m-%d}")
             st.write(f"**Vote End Date**: {x['voting_end_time']:%Y-%m-%d}")
         if x.status == "PROPOSAL_STATUS_VOTING_PERIOD":
@@ -299,3 +583,17 @@ for i, x in sub_df.iterrows():
         if x.status == "PROPOSAL_STATUS_DEPOSIT_PERIOD":
             st.write(f"**Submit Time*: {x['submit_time']:%Y-%m-%d}")
 
+st.header("Methods")
+st.write(
+"""
+The non-validator voting power was derived from [this query](https://app.flipsidecrypto.com/velocity/queries/20f89eaa-e7f5-42b9-834f-45027923775a).
+Any gov_vote where there is no label was treaded as a non-validator.
+The voting power was derived from the daily balance of staked LUNA from that day.
+This is due to an issue where the `Voting_Power` column of the `terra.gov_vote` table had a lot of null values.
+
+For validator voting, the [Terra LCD](https://lcd.terra.dev/swagger/) was used to capture information on the governance proposals.
+Validator vote counts were derived by subtracting the non-validator votes from the total votes per each proposal.
+
+In the `terra.gov_vote` table, the voting power is not accurate for the validator address-- when it is not null, the value is the amount in the terra address owned by the validator, and not the total amount delegated to that validator.
+"""
+)
