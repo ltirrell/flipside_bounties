@@ -1,14 +1,13 @@
 # # Votes, Votes, Votes
 # > On average, how much voting power (in Luna) was used to vote 'YES' for governance proposals? Out of this, how much Luna comes from validators vs regular wallets?
 
-from ctypes import alignment
-from heapq import merge
-from re import sub
+from locale import normalize
 from typing import List
 import altair as alt
 import numpy as np
 import pandas as pd
 import requests
+from sqlalchemy import over
 import streamlit as st
 
 LCD = "https://lcd.terra.dev"
@@ -497,47 +496,176 @@ chart_proportion = (
 ).interactive()
 st.altair_chart(chart_voting_power & chart_proportion, use_container_width=True)
 
+# compare the percentage of vals voting yes vs percentage of non-vals
+sub_df = completed_df[
+    [
+        "proposal_id",
+        "option",
+        "voting_power",
+        "non_val_voting_power",
+        "val_voting_power",
+        "title",
+        "status",
+        "voting_end_time",
+    ]
+]
+sub_df["non_val_proportion"] = sub_df["non_val_voting_power"] / sub_df.groupby(
+    ["proposal_id"]
+)["non_val_voting_power"].transform("sum")
+sub_df["val_proportion"] = sub_df["voting_power"] / sub_df.groupby(["proposal_id"])[
+    "voting_power"
+].transform("sum")
+sub_df = (
+    sub_df.fillna(0)
+    .replace("PROPOSAL_STATUS_REJECTED", "Rejected")
+    .replace("PROPOSAL_STATUS_PASSED", "Passed")
+)
+sub_df["Difference"] = sub_df["val_proportion"] - sub_df["non_val_proportion"]
+
+yes_df2 = (
+    sub_df[sub_df.option == "Yes"]
+    .rename(
+        columns={
+            "val_proportion": "Validator",
+            "non_val_proportion": "Regular wallet",
+        }
+    )
+    .melt(
+        id_vars=["proposal_id", "title", "status", "voting_end_time", "Difference"],
+        value_vars=["Validator", "Regular wallet"],
+        var_name="Voter Type",
+        value_name="Voting Proportion",
+    )
+).sort_values(by=["Voter Type", "proposal_id"])
+
+st.subheader("Validators vs. Non-Validators")
+
 
 # TODO: work on this later?
-# st.write(
-# """
+st.write(
+    """
+Next we'll compare if validators and non-validators vote in similar ways.
 
-# """
-# )
-# chart_proportion = (
-#     alt.Chart(yes_df)
-#     .mark_bar(binSpacing=0, opacity=0.65)
-#     .encode(
-#         alt.X(
-#             "proportion_yes_category",
-#             bin=alt.Bin(maxbins=25),
-#             title="Proportion voting Yes (binned)",
-#         ),
-#         alt.Y(
-#             "count()",
-#             stack=None,
-#         ),
-#         alt.Order(
-#             "count(proportion_yes_category)",
-#             sort="descending",
-#         ),
-#         alt.Color("Voter Type", legend=alt.Legend(orient="bottom")),
-#         tooltip=[
-#             alt.Tooltip("Voter Type"),
-#             alt.Tooltip(
-#                 "average(proportion_yes_category)",
-#                 title="Average Proportion voting Yes in bin",
-#                 format=",.2%",
-#             ),
-#             alt.Tooltip(
-#                 "count(proportion_yes_category)", title="Proposals in bin", format=",.0f"
-#             ),
-#         ],
-#     )
-#     .properties(width=800)
-# ).interactive()
-# st.altair_chart(chart_proportion, use_container_width=True)
+For the most part, if there is a very low proportion of "Yes" votes, both groups vote similarly.
+The same is true for when votes are overwhemingly Yes.
+"""
+)
+chart_proportion = (
+    alt.Chart(yes_df2)
+    .mark_bar(binSpacing=0, opacity=0.65)
+    .encode(
+        alt.X(
+            "Voting Proportion",
+            bin=True,
+            title="Proportion voting Yes (binned)",
+        ),
+        alt.Y(
+            "count()",
+            stack=None,
+        ),
+        alt.Order(
+            "count(Voting Proportion)",
+            sort="descending",
+        ),
+        alt.Color("Voter Type", legend=alt.Legend(orient="bottom")),
+        tooltip=[
+            alt.Tooltip("Voter Type"),
+            alt.Tooltip(
+                "average(Voting Proportion)",
+                title="Average Proportion voting Yes in bin",
+                format=",.2%",
+            ),
+            alt.Tooltip(
+                "count(Voting Proportion)", title="Proposals in bin", format=",.0f"
+            ),
+        ],
+    )
+    .properties(width=800)
+).interactive()
+st.altair_chart(chart_proportion, use_container_width=True)
 
+st.write(
+"""
+This is more clear in the two charts below.
+The percentage voting Yes between validators and non-validators is shown, and generarally these two groups vote the same way (though some proposals had little or no particpation by non-validators)
+"""
+)
+chart = (
+    alt.Chart(yes_df2)
+    .mark_bar()
+    .transform_calculate(cat="datum['Voter Type'] + ': ' + datum.status")
+    .encode(
+        alt.X("proposal_id:N", axis=None),
+        alt.Y(
+            "Voting Proportion",
+            axis=None,
+            #  stack='center'
+        ),
+        alt.Color(
+            "cat:N",
+            title="Voter type and Proposal Status",
+            scale=alt.Scale(range=["#172ad1", "#d17117", "#17d11d", "#d11755"]),
+            legend=alt.Legend(orient="bottom"),
+        ),
+        tooltip=[
+            alt.Tooltip("proposal_id", title="Proposal ID"),
+            alt.Tooltip("title", title="Proposal Title"),
+            alt.Tooltip("Voter Type"),
+            alt.Tooltip(
+                "Voting Proportion", title="Proportion voting Yes", format=".1%"
+            ),
+            alt.Tooltip("status", title="Status"),
+            alt.Tooltip("voting_end_time", title="Vote end date"),
+        ],
+    )
+    .properties(width=800)
+)
+
+
+st.altair_chart(chart, use_container_width=True)
+
+
+st.write(
+f"""
+The difference in proportion voting Yes between validators and non-validators is shown below for Passed and Rejected votes.
+
+The mean difference is **{sub_df[sub_df.option == "Yes"].Difference.mean():.1%}** for all proposals, **{sub_df[sub_df.option == "Yes"][sub_df["status"] == "Passed"].Difference.mean():.1%}** for Passed proposals and **{sub_df[sub_df.option == "Yes"][sub_df["status"] ==  "Rejected"].Difference.mean():.1%}** for Rejected proposals.
+
+While the two groups generally vote in similar ways, it seems there is more divergence when the vote is rejected.
+"""
+)
+chart2 = (
+    alt.Chart(sub_df[sub_df.option == "Yes"])
+    .mark_bar()
+    .encode(
+        alt.X("proposal_id:N", axis=None),
+        alt.Y(
+            "Difference",
+            axis=None,
+            #  stack='center'
+        ),
+        alt.Color("status", title="Vote Status", legend=alt.Legend(orient="bottom")),
+        tooltip=[
+            alt.Tooltip("proposal_id", title="Proposal ID"),
+            alt.Tooltip("title", title="Proposal Title"),
+            alt.Tooltip(
+                "Difference",
+                title="Difference: Validator and Non-Validator Voting Yes",
+                format=".1%",
+            ),
+            alt.Tooltip("status", title="Status"),
+            alt.Tooltip("voting_end_time", title="Vote end date"),
+        ],
+    )
+).interactive()
+overlay = pd.DataFrame({"y": [0.1, -0.1]})
+hline = alt.Chart(overlay).mark_rule(color="red").encode(y="y:Q")
+mean = (
+    alt.Chart(sub_df[sub_df.option == "Yes"])
+    .mark_rule(color="green")
+    .encode(y="mean(Difference):Q")
+)
+st.altair_chart(chart2 + hline + mean, use_container_width=True)
 
 st.header("Proposal Details")
 status_dict = {
@@ -585,7 +713,7 @@ for i, x in sub_df.iterrows():
 
 st.header("Methods")
 st.write(
-"""
+    """
 The non-validator voting power was derived from [this query](https://app.flipsidecrypto.com/velocity/queries/20f89eaa-e7f5-42b9-834f-45027923775a).
 Any gov_vote where there is no label was treaded as a non-validator.
 The voting power was derived from the daily balance of staked LUNA from that day.
