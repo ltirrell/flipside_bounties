@@ -1,13 +1,11 @@
 # # Votes, Votes, Votes
 # > On average, how much voting power (in Luna) was used to vote 'YES' for governance proposals? Out of this, how much Luna comes from validators vs regular wallets?
 
-from locale import normalize
 from typing import List
 import altair as alt
 import numpy as np
 import pandas as pd
 import requests
-from sqlalchemy import over
 import streamlit as st
 
 LCD = "https://lcd.terra.dev"
@@ -585,7 +583,7 @@ chart_proportion = (
 st.altair_chart(chart_proportion, use_container_width=True)
 
 st.write(
-"""
+    """
 This is more clear in the two charts below.
 The percentage voting Yes between validators and non-validators is shown, and generarally these two groups vote the same way (though some proposals had little or no particpation by non-validators)
 """
@@ -626,7 +624,7 @@ st.altair_chart(chart, use_container_width=True)
 
 
 st.write(
-f"""
+    f"""
 The difference in proportion voting Yes between validators and non-validators is shown below for Passed and Rejected votes.
 
 The mean difference is **{sub_df[sub_df.option == "Yes"].Difference.mean():.1%}** for all proposals, **{sub_df[sub_df.option == "Yes"][sub_df["status"] == "Passed"].Difference.mean():.1%}** for Passed proposals and **{sub_df[sub_df.option == "Yes"][sub_df["status"] ==  "Rejected"].Difference.mean():.1%}** for Rejected proposals.
