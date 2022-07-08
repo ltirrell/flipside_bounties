@@ -39,7 +39,7 @@ query_information = {
 }
 
 
-@st.cache(ttl=(60 * 45))
+@st.cache(ttl=(3600 * 6))
 def load_data(
     query_information: Mapping[str, Mapping[str, str]] = query_information
 ) -> pd.DataFrame:
@@ -85,7 +85,7 @@ def alt_line_chart(data: pd.DataFrame, colname: str, log_scale=True) -> alt.Char
     alt.Chart
         Chart showing columnname values, and a multiline tooltip on mouseover
     """
-    scale = "log" if log_scale else 'linear'
+    scale = "log" if log_scale else "linear"
     base = alt.Chart(data).encode(
         x=alt.X("yearmonthdate(datetime):T", axis=alt.Axis(title=""))
     )

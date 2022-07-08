@@ -69,7 +69,9 @@ mean_first_60d_tx = user_data_first_60.groupby(["blockchain"])[
 mean_90d_tx_per_user = user_data.groupby(["blockchain"])[
     ["tx_per_all_users", "tx_per_active_users"]
 ].mean()
-mean_30d_tx_per_user = user_data_last_30.groupby(["blockchain"])[["tx_per_active_users"]].mean()
+mean_30d_tx_per_user = user_data_last_30.groupby(["blockchain"])[
+    ["tx_per_active_users"]
+].mean()
 
 
 st.header("A look at NEAR")
@@ -108,7 +110,7 @@ with col2:
 f"""
 If we look back at the first 60 days of our time period, we can get an idea of whether users have been interacting on chain for a longer period of time, or are newer to the ecosystem.
 
-NEAR has the highest percentage of Active Users to Total Users (**{mean_first_60d.active_users_proportion["NEAR"]:.2%}**).
+NEAR has among the highest percentage of Active Users to Total Users (**{mean_first_60d.active_users_proportion["NEAR"]:.2%}**).
 This means that a large proportion of users currently active have been using the blockchain throughout the entire period.
 
 In comparison, Solana has a low percentage of Active Users to Total Users (**{mean_first_60d.active_users_proportion["Solana"]:.2%}**).
@@ -187,12 +189,10 @@ Polygon has fewer Transactiosn per User, while Ethereum has by far the least.
 """
 
 all_user_tx_per_user_chart = near_info.alt_line_chart(
-    user_data,
-    "tx_per_all_users", log_scale=False
+    user_data, "tx_per_all_users", log_scale=False
 ).properties(width=200)
 active_user_tx_per_user_chart = near_info.alt_line_chart(
-    user_data,
-    "tx_per_active_users", log_scale=False
+    user_data, "tx_per_active_users", log_scale=False
 ).properties(width=200)
 combined_tx = alt.hconcat(all_user_tx_per_user_chart, active_user_tx_per_user_chart)
 st.altair_chart(combined_tx, use_container_width=True)
@@ -219,9 +219,21 @@ For all chains, Active Users have a higher transaction count per user than All U
 """
 
 st.header("So... what city is NEAR?")
+"""
+NEAR has the following characteristics:
+- Low population (small number of Active Users)
+- Old population (higher porportion of users over the last 90 days are Active Users)
+- Dense population (low average transactions per day, but high numbers of transactions per users)
 
+With this in mind, NEAR would be a small city in Europe, with a high density in a country with a aging population.
+
+Based on extensive research (using sources [here](https://en.wikipedia.org/wiki/List_of_cities_proper_by_population_density) and [here](https://www.worlddata.info/average-age.php)), an example city would be **[Neapoli, Thessaloniki, Greece
+](https://en.wikipedia.org/wiki/Neapoli,_Thessaloniki)**!
+"""
+
+st.header("Methods")
 with st.expander("Queries and Methods"):
-    st.header("Methods")
+
     "Data is from Flipside Crytpo, using the following queries:"
     for k, v in near_info.query_information.items():
         x = f"- [{k}]({v['query']})"
@@ -230,6 +242,8 @@ with st.expander("Queries and Methods"):
     The `transaction` table from each of the chains was used, counting the equivalent of a `tx_id` as a unique transaction, and `from_address` or `signer` as a user.
 
     Future work on this analysis can improve this process, by filtering out addresses which are known to be associated with smart contracts or other non-human addresses.
+
+    Additionally, more quantitative metrics can be used for determining the city of different blockchains.
     """
 
 # Q1. If NEAR were a city, who would the citizens be?
