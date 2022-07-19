@@ -10,7 +10,7 @@ All dashboards are hosted using streamlit's free tier, pulling data from queries
 Dashboards are organsized based on the blockchain they are analyzing.
 
 
-No information listed here is financial advice (or any other kind of advice)/
+No information listed here is financial advice (or any other kind of advice).
 
 ## Algorand
 - **Flipside Algorand Wallet Behavior**
