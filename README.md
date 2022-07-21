@@ -23,6 +23,10 @@ No information listed here is financial advice (or any other kind of advice).
   - [code](near/citizens_of_NEAR_users.py)
 
 ## Solana
+- **Metrics of Success**
+  - This is work for a future Solana mega-dashboard, coming soon™. Built using the Flipside [ShroomDK](https://sdk.flipsidecrypto.xyz/)
+  - [dasboard](https://ltirrell-flipside-bounties-solanajupiter-swaps-h7eool.streamlitapp.com/)
+  - [code](solana/metrics_of_success.py)
 - **Jupiter Swaps**
   - [dasboard](https://ltirrell-flipside-bounties-solanajupiter-swaps-h7eool.streamlitapp.com/)
   - [code](solana/jupiter_swaps.py)
