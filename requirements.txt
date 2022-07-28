@@ -9,4 +9,5 @@ Pillow
 pyvis
 scipy
 seaborn
+shroomdk
 streamlit
