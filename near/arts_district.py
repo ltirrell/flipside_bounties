@@ -26,16 +26,12 @@ Exploring the NEAR NFT scene.
 API_KEY = st.secrets["flipside"]["api_key"]
 
 @st.cache(ttl=24 * 60)
-def get_flipside_data(query):
-    try:
-        query_result_set = sdk.query(query)
-    except errors.UserError:
-        query_result_set = sdk.query(query, cached=False)
+def get_flipside_data(query, cached=True):
+    query_result_set = sdk.query(query, cached=cached)
     df = pd.DataFrame(query_result_set.rows, columns=query_result_set.columns)
     return df
 
 
-@st.cache(ttl=30)
 def get_random_collections(n=10, max_num=34270) -> list:
     limit = n
     skip = random.randint(0, max_num)
@@ -345,7 +341,10 @@ data_load_state = st.text(
     "Loading data from Flipside... this will take several minutes unless the collection is cached"
 )
 sdk = ShroomDK(API_KEY)
-df = get_flipside_data(query)
+try:
+    df = get_flipside_data(query, cached=True)
+except errors.UserError:
+    df = get_flipside_data(query, cached=False)
 data_load_state.text("")
 
 
