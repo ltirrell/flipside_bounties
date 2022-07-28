@@ -26,9 +26,11 @@ Exploring the NEAR NFT scene.
 API_KEY = st.secrets["flipside"]["api_key"]
 
 @st.cache(ttl=24 * 60)
-def get_flipside_data(query, cached=True):
+def get_flipside_data(query, cached=True, save=False):
     query_result_set = sdk.query(query, cached=cached)
     df = pd.DataFrame(query_result_set.rows, columns=query_result_set.columns)
+    if save:
+        df.to_csv("query.csv")
     return df
 
 
@@ -223,13 +225,13 @@ Now let's look at a collections in more detail! Take a look at a popular collect
 We can see the average, most expensive, and cheapest NFT sales each day, as well as the sales volume for the collection (in NEAR and number of transactions).
 
 Try some popular NFT collections such as:
-- asac.near (Antisocial Ape Club)
 - secretskelliessociety.near (Secret Skellies Society)
 - nearnautnft.near (NEARNauts)
+- asac.near (Antisocial Ape Club)
 """
 )
 
-col_id = st.text_input("Collection ID", "asac.near")
+col_id = st.text_input("Collection ID", "secretskelliessociety.near")
 try:
     r = requests.get(
         "https://api-v2-mainnet.paras.id/collections",
@@ -341,11 +343,19 @@ data_load_state = st.text(
     "Loading data from Flipside... this will take several minutes unless the collection is cached"
 )
 sdk = ShroomDK(API_KEY)
-try:
-    df = get_flipside_data(query, cached=True)
-except errors.UserError:
-    df = get_flipside_data(query, cached=False)
-data_load_state.text("")
+# HACK: problem with loading data, so precomputing these here:
+if col_id == "secretskelliessociety.near":
+    df = pd.read_csv("near/skellies.csv")
+elif col_id == "nearnautnft.near":
+    df = pd.read_csv("near/nearnauts.csv")
+elif col_id == "asac.near":
+    df = pd.read_csv("near/asac.csv")
+else:
+    try:
+        df = get_flipside_data(query, cached=True)
+    except errors.UserError:
+        df = get_flipside_data(query, cached=False)
+    data_load_state.text("")
 
 
 df = df.rename(
