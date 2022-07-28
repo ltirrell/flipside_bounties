@@ -1,6 +1,3 @@
-from audioop import avg
-import datetime
-from gc import collect
 import io
 import random
 
@@ -25,6 +22,7 @@ Exploring the NEAR NFT scene.
 
 API_KEY = st.secrets["flipside"]["api_key"]
 
+
 @st.cache(ttl=24 * 60)
 def get_flipside_data(query, cached=True, save=False):
     query_result_set = sdk.query(query, cached=cached)
@@ -32,6 +30,17 @@ def get_flipside_data(query, cached=True, save=False):
     if save:
         df.to_csv("query.csv")
     return df
+
+
+@st.cache(ttl=24 * 60)
+def load_data():
+    sales_volume_df = pd.read_json(
+        "https://node-api.flipsidecrypto.com/api/v2/queries/6ae95685-436d-4682-8d8b-dec364692ed9/data/latest"
+    )
+    top_projects_df = pd.read_json(
+        "https://node-api.flipsidecrypto.com/api/v2/queries/89c38bbf-9c3b-41d1-a92e-b12d4bdce055/data/latest"
+    )
+    return sales_volume_df, top_projects_df
 
 
 def get_random_collections(n=10, max_num=34270) -> list:
@@ -84,7 +93,9 @@ def print_stats(x):
 
 
 def alt_line_chart(
-    data: pd.DataFrame, colname: str = "value", log_scale=False, success_rate=False
+    data: pd.DataFrame,
+    colname: str = "value",
+    log_scale=False,
 ) -> alt.Chart:
     """Create a multiline Altair chart with tooltip
 
@@ -118,10 +129,6 @@ def alt_line_chart(
             axis=alt.Axis(title=""),
         )
     )
-
-    # data["variable"] = data["variable"].str.title()
-    # data["variable"] = data["variable"].str.replace("_", " ")
-
     selection = alt.selection_single(
         fields=["DATETIME"],
         nearest=True,
@@ -167,54 +174,134 @@ def alt_line_chart(
     return chart.interactive().properties(width=1000)
 
 
+st.header("What's happening on NEAR?")
+st.write("Below is the weekly sale volume of NFTs on Near, showing number of sellers, buyers, total sales count and daily volume in NEAR. Sales began to pick up in January 2022, and were quite popular until May 2022, when sales dipped with a market downturn.")
+sales_volume_df, top_projects_df = load_data()
+
+bars = (
+    alt.Chart(
+        sales_volume_df,
+    )
+    .mark_bar(width=10)
+    .transform_fold(
+        fold=["Sales Count", "Buyers", "Sellers"], as_=["variable", "value"]
+    )
+    .encode(
+        x=alt.X(
+            "yearmonthdate(DATE):T",
+            axis=alt.Axis(title=""),
+        ),
+        y=alt.Y("value:Q", title="Sales Count"),
+        color=alt.Color("variable:N", legend=alt.Legend(title="Weekly Volume")),
+        tooltip=[
+            alt.Tooltip("yearmonthdate(DATE)", title="Date"),
+            alt.Tooltip("Daily Volume (NEAR)", format=",.1f"),
+            alt.Tooltip("Sales Count"),
+            alt.Tooltip("Buyers"),
+            alt.Tooltip("Sellers"),
+        ],
+    )
+).interactive()
+lines = (
+    alt.Chart(
+        sales_volume_df,
+    )
+    .mark_line(color="black")
+    .transform_fold(
+        fold=[
+            "Daily Volume (NEAR)",
+        ],
+        as_=["variable", "value"],
+    )
+    .encode(
+        x=alt.X(
+            "yearmonthdate(DATE):T",
+            axis=alt.Axis(title=""),
+        ),
+        y=alt.Y("value:Q", title="Sales Volume (NEAR)"),
+        color=alt.Color(
+            "variable:N",
+            legend=alt.Legend(title=None),
+            scale=alt.Scale(
+                domain=["Daily Volume (NEAR)"],
+                range=[
+                    "black",
+                ],
+            ),
+        ),
+        tooltip=[
+            alt.Tooltip("yearmonthdate(DATE)", title="Date"),
+            alt.Tooltip("Daily Volume (NEAR)", format=",.1f"),
+            alt.Tooltip("Sales Count"),
+            alt.Tooltip("Buyers"),
+            alt.Tooltip("Sellers"),
+        ],
+    )
+).interactive()
+vol_chart = (
+    alt.layer(bars, lines, title="Overall NFT volume on NEAR (weekly)")
+    .resolve_scale(y="independent", color="independent")
+    .properties(width=1000)
+)
+
+st.altair_chart(vol_chart)
+
 st.header("The hottest place for art: Paras")
 f"""
 [Paras](https://paras.id/) is the most popular NFT marketplace on NEAR. Let's take a look at what it has to offer.
 
-**NSFW warning: data is loaded at random, and may contain inappropriate images!**
-Random images are hidden by default because of this.
+
 """
 st.header("Gallery")
 st.write(
-    "Walking through Paras, we see a wide variety of collections. We stop at some to take a look:"
-)
-n_random = st.slider("Number of random collections", 1, 10, 4)
-data_load_state = st.text(
-    "Loading collection data... if this is taking too long, try refreshing the page."
-)
-collection_data = get_random_collections(n=n_random)
-collection_data = add_collection_stats(collection_data)
-
-
-with st.expander("Random Collections, expand to view!"):
-    cols = st.columns(2)
-    for i, collection_data in enumerate(collection_data):
-        c_num = i % 2
-        if collection_data["creator_id"].endswith(".near"):
-            creator = collection_data["creator_id"]
-        else:
-            creator = f"{collection_data['creator_id'][:8]}...{collection_data['creator_id'][-8:]}"
-
-        try:
-            r = requests.get(f"https://ipfs.fleek.co/ipfs/{collection_data['media']}")
-            image = Image.open(io.BytesIO(r.content))
-            cols[c_num].image(image)
-        except:
-            pass
-        cols[c_num].subheader(f"{collection_data['collection']}")
-        try:
-            cols[c_num].caption(collection_data["description"])
-        except:
-            pass
-        cols[c_num].write(
-            f"""
-- **Creator:** {creator}
-- [**View on Paras**](https://paras.id/collection/{collection_data['collection_id']})
-{print_stats(collection_data)}
------
     """
-        )
-data_load_state.text("")
+Walking through Paras, we see a wide variety of collections.
+We can stop to take a look at some. Just press the button!
+Note that this may take some time to load...
+
+**NSFW warning: collections are random, and may contain inappropriate images!** We'll hide them by default.
+    """
+)
+col1, col2 = st.columns([3, 1])
+n_random = col1.slider("Number of random collections", 1, 10, 4)
+if col2.button("Load collections"):
+    data_load_state = st.text(
+        "Loading collection data... if this is taking too long, try refreshing the page."
+    )
+    collection_data = get_random_collections(n=n_random)
+    collection_data = add_collection_stats(collection_data)
+
+    with st.expander("Random Collections, expand to view!"):
+        cols = st.columns(2)
+        for i, collection_data in enumerate(collection_data):
+            c_num = i % 2
+            if collection_data["creator_id"].endswith(".near"):
+                creator = collection_data["creator_id"]
+            else:
+                creator = f"{collection_data['creator_id'][:8]}...{collection_data['creator_id'][-8:]}"
+
+            try:
+                r = requests.get(
+                    f"https://ipfs.fleek.co/ipfs/{collection_data['media']}"
+                )
+                image = Image.open(io.BytesIO(r.content))
+                cols[c_num].image(image)
+            except:
+                pass
+            cols[c_num].subheader(f"{collection_data['collection']}")
+            try:
+                cols[c_num].caption(collection_data["description"])
+            except:
+                pass
+            cols[c_num].write(
+                f"""
+    - **Creator:** {creator}
+    - [**View on Paras**](https://paras.id/collection/{collection_data['collection_id']})
+    {print_stats(collection_data)}
+    -----
+        """
+            )
+    data_load_state.text("")
 
 
 st.header("Tour")
@@ -425,4 +512,10 @@ chart2 = (
 st.altair_chart(alt.layer(chart1, chart2).resolve_scale(y="independent"))
 
 st.header("Methods")
-"""Data was gathered using the [Paras API](https://parashq.github.io/) and Flipside Crypto, using this [query](https://app.flipsidecrypto.com/velocity/queries/b4781971-7539-41ef-9c1e-4af08afb79de) from [@pinehearst_](https://twitter.com/pinehearst_)"""
+"""
+Data was gathered using the [Paras API](https://parashq.github.io/) and Flipside Crypto, based off of this [query](https://app.flipsidecrypto.com/velocity/queries/b4781971-7539-41ef-9c1e-4af08afb79de) from [@pinehearst_](https://twitter.com/pinehearst_).
+
+The interactive query used for this dashboard can be found [https://github.com/ltirrell/flipside_bounties/blob/main/near/arts_district.py#L271], where `col_id` is replaced with the value given by the user.
+
+The [top NFT projects](https://app.flipsidecrypto.com/velocity/queries/89c38bbf-9c3b-41d1-a92e-b12d4bdce055) and [overall sales volume](https://app.flipsidecrypto.com/velocity/queries/6ae95685-436d-4682-8d8b-dec364692ed9) are updated every 12 hours on Flipside, and are again borrowed from @pinehearst_'s [excellent work](https://app.flipsidecrypto.com/dashboard/near-arts-district-m8p1bd).
+"""
