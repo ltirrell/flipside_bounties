@@ -21,7 +21,9 @@ No information listed here is financial advice (or any other kind of advice).
 - **Citizens of NEAR**
   - [dashboard](https://ltirrell-flipside-bounties-nearcitizens-of-near-users-xtxglz.streamlitapp.com/)
   - [code](near/citizens_of_NEAR_users.py)
-
+- **NEAR Arts District**
+  - [dashboard](https://ltirrell-flipside-bounties-neararts-district-s6rmn5.streamlitapp.com/)
+  - [code](near/arts_district.py)
 ## Solana
 - **Metrics of Success**
   - This is work for a future Solana mega-dashboard, coming soon™. Built using the Flipside [ShroomDK](https://sdk.flipsidecrypto.xyz/)

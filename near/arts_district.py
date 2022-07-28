@@ -7,7 +7,7 @@ import random
 import altair as alt
 import pandas as pd
 import requests
-from shroomdk import ShroomDK
+from shroomdk import ShroomDK, errors
 import streamlit as st
 from PIL import Image
 
@@ -24,14 +24,13 @@ Exploring the NEAR NFT scene.
 )
 
 API_KEY = st.secrets["flipside"]["api_key"]
-TTL_MINUTES = 30
-PAGE_SIZE = 100000
-PAGE_NUMBER = 1
-
 
 @st.cache(ttl=24 * 60)
 def get_flipside_data(query):
-    query_result_set = sdk.query(query)
+    try:
+        query_result_set = sdk.query(query)
+    except errors.UserError:
+        query_result_set = sdk.query(query, cached=False)
     df = pd.DataFrame(query_result_set.rows, columns=query_result_set.columns)
     return df
 
@@ -372,37 +371,49 @@ sale_df = df[
 chart = alt_line_chart(sale_df)
 st.altair_chart(chart)
 
-chart1 = alt.Chart(
-    df,
-    title=f"Sale Volume: {collection_data['collection']} ({col_id})",
-).mark_bar().encode(
-    x=alt.X(
-        "yearmonthdate(DATETIME):T",
-        axis=alt.Axis(title=""),
-    ),
-    y=alt.Y("Number of Sales"),
-    tooltip=[
-        alt.Tooltip("yearmonthdate(DATETIME)", title="Date"),
-        alt.Tooltip("Number of Sales", type="quantitative", format=","),
-        alt.Tooltip("Total Sale Volume", type="quantitative", format=",.2f"),
-    ],
-).interactive().properties(width=1000)
+chart1 = (
+    alt.Chart(
+        df,
+        title=f"Sale Volume: {collection_data['collection']} ({col_id})",
+    )
+    .mark_bar()
+    .encode(
+        x=alt.X(
+            "yearmonthdate(DATETIME):T",
+            axis=alt.Axis(title=""),
+        ),
+        y=alt.Y("Number of Sales"),
+        tooltip=[
+            alt.Tooltip("yearmonthdate(DATETIME)", title="Date"),
+            alt.Tooltip("Number of Sales", type="quantitative", format=","),
+            alt.Tooltip("Total Sale Volume", type="quantitative", format=",.2f"),
+        ],
+    )
+    .interactive()
+    .properties(width=1000)
+)
 
-chart2 = alt.Chart(
-    df,
-).mark_line(color='red').encode(
-    x=alt.X(
-        "yearmonthdate(DATETIME):T",
-        axis=alt.Axis(title=""),
-    ),
-    y=alt.Y("Total Sale Volume", title="Sale Volume (NEAR)"),
-    tooltip=[
-        alt.Tooltip("yearmonthdate(DATETIME)", title="Date"),
-        alt.Tooltip("Number of Sales", type="quantitative", format=","),
-        alt.Tooltip("Total Sale Volume", type="quantitative", format=",.2f"),
-    ],
-).interactive().properties(width=1000)
-st.altair_chart(alt.layer(chart1, chart2).resolve_scale(y='independent'))
+chart2 = (
+    alt.Chart(
+        df,
+    )
+    .mark_line(color="red")
+    .encode(
+        x=alt.X(
+            "yearmonthdate(DATETIME):T",
+            axis=alt.Axis(title=""),
+        ),
+        y=alt.Y("Total Sale Volume", title="Sale Volume (NEAR)"),
+        tooltip=[
+            alt.Tooltip("yearmonthdate(DATETIME)", title="Date"),
+            alt.Tooltip("Number of Sales", type="quantitative", format=","),
+            alt.Tooltip("Total Sale Volume", type="quantitative", format=",.2f"),
+        ],
+    )
+    .interactive()
+    .properties(width=1000)
+)
+st.altair_chart(alt.layer(chart1, chart2).resolve_scale(y="independent"))
 
 st.header("Methods")
 """Data was gathered using the [Paras API](https://parashq.github.io/) and Flipside Crypto, using this [query](https://app.flipsidecrypto.com/velocity/queries/b4781971-7539-41ef-9c1e-4af08afb79de) from [@pinehearst_](https://twitter.com/pinehearst_)"""
