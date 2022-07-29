@@ -594,7 +594,7 @@ st.header("Methods")
 """
 Data was gathered using the [Paras API](https://parashq.github.io/) and Flipside Crypto, based off of this [query](https://app.flipsidecrypto.com/velocity/queries/b4781971-7539-41ef-9c1e-4af08afb79de) from [@pinehearst_](https://twitter.com/pinehearst_).
 
-The interactive query used for this dashboard can be found [here](https://github.com/ltirrell/flipside_bounties/blob/main/near/arts_district.py#L271), where `col_id` is replaced with the value given by the user.
+The interactive query used for this dashboard can be found [here](https://github.com/ltirrell/flipside_bounties/blob/main/near/arts_district.py#L435), where `col_id` is replaced with the value given by the user.
 
 The [top NFT projects](https://app.flipsidecrypto.com/velocity/queries/89c38bbf-9c3b-41d1-a92e-b12d4bdce055) and [overall sales volume](https://app.flipsidecrypto.com/velocity/queries/6ae95685-436d-4682-8d8b-dec364692ed9) are updated every 12 hours on Flipside, and are again borrowed from @pinehearst_'s [excellent work](https://app.flipsidecrypto.com/dashboard/near-arts-district-m8p1bd).
 """
