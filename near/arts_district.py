@@ -313,7 +313,7 @@ if col2.button("Load collections"):
 st.header("Tour")
 st.write(
     """
-We've seen some random collects, let's look at the best!
+We've seen some random collections, let's look at the ones that attract the most visitors!
 The top projects by volume are shown here:
 """
 )
@@ -383,8 +383,8 @@ st.altair_chart(near_vol & sales_vol, use_container_width=True)
 
 st.write(
     """
-Now let's look at a collections in more detail!
-Take a look at a popular collection, or enter your own below!
+Now we we can take a self-guided tour, taking a look at some collections in more detail!
+Explore the most popular collection, or enter one that you want to view below.
 
 We can see the average, most expensive, and cheapest NFT sales each day, as well as the sales volume for the collection (in NEAR and number of transactions).
 
