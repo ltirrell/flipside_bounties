@@ -175,7 +175,9 @@ def alt_line_chart(
 
 
 st.header("What's happening on NEAR?")
-st.write("Below is the weekly sale volume of NFTs on Near, showing number of sellers, buyers, total sales count and daily volume in NEAR. Sales began to pick up in January 2022, and were quite popular until May 2022, when sales dipped with a market downturn.")
+st.write(
+    "Below is the weekly sale volume of NFTs on Near, showing number of sellers, buyers, total sales count and daily volume in NEAR. Sales began to pick up in January 2022, and were quite popular until May 2022, when sales dipped with a market downturn."
+)
 sales_volume_df, top_projects_df = load_data()
 
 bars = (
@@ -195,7 +197,9 @@ bars = (
         color=alt.Color("variable:N", legend=alt.Legend(title="Weekly Volume")),
         tooltip=[
             alt.Tooltip("yearmonthdate(DATE)", title="Date"),
-            alt.Tooltip("Daily Volume (NEAR)", format=",.1f"),
+            alt.Tooltip(
+                "Daily Volume (NEAR)", title="Weekly Volume (NEAR)", format=",.1f"
+            ),
             alt.Tooltip("Sales Count"),
             alt.Tooltip("Buyers"),
             alt.Tooltip("Sellers"),
@@ -231,7 +235,9 @@ lines = (
         ),
         tooltip=[
             alt.Tooltip("yearmonthdate(DATE)", title="Date"),
-            alt.Tooltip("Daily Volume (NEAR)", format=",.1f"),
+            alt.Tooltip(
+                "Daily Volume (NEAR)", title="Weekly Volume (NEAR)", format=",.1f"
+            ),
             alt.Tooltip("Sales Count"),
             alt.Tooltip("Buyers"),
             alt.Tooltip("Sellers"),
@@ -244,7 +250,7 @@ vol_chart = (
     .properties(width=1000)
 )
 
-st.altair_chart(vol_chart)
+st.altair_chart(vol_chart, use_container_width=True)
 
 st.header("The hottest place for art: Paras")
 f"""
@@ -307,7 +313,78 @@ if col2.button("Load collections"):
 st.header("Tour")
 st.write(
     """
-Now let's look at a collections in more detail! Take a look at a popular collection, or enter your own below!
+We've seen some random collects, let's look at the best!
+The top projects by volume are shown here:
+"""
+)
+sales_vol = (
+    alt.Chart(top_projects_df)
+    .mark_bar(width=18)
+    .transform_fold(fold=["Sales Count"], as_=["variable", "value"])
+    .transform_window(
+        rank="rank(value)", sort=[alt.SortField("value", order="descending")]
+    )
+    .transform_filter(alt.datum.rank <= 40)
+    .encode(
+        x=alt.X("NFT Collection", axis=alt.Axis(title=""), sort="-y"),
+        y=alt.Y(
+            "value:Q",
+            title="Sales Count",
+        ),
+        color=alt.Color(
+            "NFT Collection:N",
+            sort=alt.EncodingSortField("value", op="max", order="descending"),
+            scale=alt.Scale(
+                scheme="tableau20",
+            ),
+        ),
+        tooltip=[
+            alt.Tooltip("NFT Collection", title="Collection Name"),
+            alt.Tooltip("Total Volume (NEAR)", format=",.1f"),
+            alt.Tooltip("Sales Count"),
+            alt.Tooltip("Buyers"),
+            alt.Tooltip("Sellers"),
+        ],
+    )
+).interactive()
+near_vol = (
+    alt.Chart(top_projects_df)
+    .mark_bar(width=18)
+    .transform_fold(
+        fold=[
+            "Total Volume (NEAR)",
+        ],
+        as_=["variable", "value"],
+    )
+    .transform_window(
+        rank="rank(value)", sort=[alt.SortField("value", order="descending")]
+    )
+    .transform_filter(alt.datum.rank <= 40)
+    .encode(
+        x=alt.X("NFT Collection", axis=alt.Axis(title=""), sort="-y"),
+        y=alt.Y("value:Q", title="Sales Volume (NEAR)"),
+        color=alt.Color(
+            "NFT Collection:N",
+            sort=alt.EncodingSortField("value", op="max", order="descending"),
+            scale=alt.Scale(
+                scheme="tableau20",
+            ),
+        ),
+        tooltip=[
+            alt.Tooltip("NFT Collection", title="Collection Name"),
+            alt.Tooltip("Total Volume (NEAR)", format=",.1f"),
+            alt.Tooltip("Sales Count"),
+            alt.Tooltip("Buyers"),
+            alt.Tooltip("Sellers"),
+        ],
+    )
+).interactive()
+st.altair_chart(near_vol & sales_vol, use_container_width=True)
+
+st.write(
+    """
+Now let's look at a collections in more detail!
+Take a look at a popular collection, or enter your own below!
 
 We can see the average, most expensive, and cheapest NFT sales each day, as well as the sales volume for the collection (in NEAR and number of transactions).
 
@@ -442,7 +519,7 @@ else:
         df = get_flipside_data(query, cached=True)
     except errors.UserError:
         df = get_flipside_data(query, cached=False)
-    data_load_state.text("")
+data_load_state.text("")
 
 
 df = df.rename(
@@ -465,7 +542,7 @@ sale_df = df[
 
 
 chart = alt_line_chart(sale_df)
-st.altair_chart(chart)
+st.altair_chart(chart, use_container_width=True)
 
 chart1 = (
     alt.Chart(
@@ -509,7 +586,9 @@ chart2 = (
     .interactive()
     .properties(width=1000)
 )
-st.altair_chart(alt.layer(chart1, chart2).resolve_scale(y="independent"))
+st.altair_chart(
+    alt.layer(chart1, chart2).resolve_scale(y="independent"), use_container_width=True
+)
 
 st.header("Methods")
 """
