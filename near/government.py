@@ -1,6 +1,3 @@
-import logging
-from time import sleep
-
 import pandas as pd
 import streamlit as st
 from dateutil import parser
@@ -122,8 +119,8 @@ except errors.UserError:
 
 st.subheader("Year to date record")
 """We can see our Governor's daily stats since 2022-01-01, and examine the total staked balance, number of blocks produced, and number of transactions processed in those blocks for each day."""
-var = st.radio(
-    "Choose which variable to look at:", ["Blocks produced", "Transactions Processed"]
+var = st.selectbox(
+    "Choose which variable to look at:", [ "Transactions Processed", "Blocks produced",]
 )
 st.altair_chart(
     alt_lines_bar(df, validator, value_vars=[var]).properties(height=500),
@@ -131,9 +128,9 @@ st.altair_chart(
 )
 load_fs_msg.text("")
 
-st.subheader("Recent results")
+st.subheader("Results by Epoch")
 """
-Additionally, let's take a look at a more fine-grained voting record: how our Governor performed in the last 100 epochs. We can see the number of blocks produced, and NEAR balance.
+Additionally, let's take a look at a more completed voting record: how our Governor performed during each epoch where it produced blocks. We can see the number of blocks produced, and NEAR balance.
 """
 validator_epochs = get_validator_epochs(validator)
 st.altair_chart(
