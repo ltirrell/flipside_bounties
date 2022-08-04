@@ -23,78 +23,38 @@ Exploring NEAR governance, with a focus on the current validator set.
 
 
 st.header("State of the Unions")
-drop_inactive = st.checkbox("Remove inactive validators from analysis. NOTE: this is causing issues with data analysis and is being actively debugged, so it may not work...")
-try:
-    blocktimes = get_blocktimes()
-    status = get_status()
-    validators = get_validators(drop_inactive)
-    # not using for now
-    # blocks = get_blocks()
-    # epochs = get_epochs()
-    # block_height = status["last_block_height"] # don't care about this right now
-    validators
-    last_update = parser.parse(status["last_block_time"]).strftime(
-        "%Y-%m-%d %H:%M:%S %Z"
-    )
-    avg_blocktime = blocktimes["avg"]
-    validator_names = validators.account_id
-    total_staked = validators["Stake (NEAR)"].sum()
+# drop_inactive = st.checkbox("Remove inactive validators from analysis. NOTE: this is causing issues with data analysis and is being actively debugged, so it may not work...")
 
-    vals_sorted_stake = validators.sort_values(
-        by="Stake (NEAR)", ascending=False
-    ).reset_index(drop=True)
-    vals_sorted_stake["Cumulative Stake (NEAR)"] = vals_sorted_stake[
-        "Stake (NEAR)"
-    ].cumsum()
-    vals_sorted_stake["Proportion of Stake"] = (
-        vals_sorted_stake["Stake (NEAR)"] / total_staked
-    )
-    nakamoto_line = 0.33 * total_staked
+blocktimes = get_blocktimes()
+status = get_status()
+validators = get_validators()
+# not using for now
+# blocks = get_blocks()
+# epochs = get_epochs()
+# block_height = status["last_block_height"] # don't care about this right now
+last_update = parser.parse(status["last_block_time"]).strftime("%Y-%m-%d %H:%M:%S %Z")
+avg_blocktime = blocktimes["avg"]
+validator_names = validators.account_id
+total_staked = validators["Stake (NEAR)"].sum()
 
-    nakamoto_coeffecient = (
-        vals_sorted_stake[
-            vals_sorted_stake["Cumulative Stake (NEAR)"] > nakamoto_line
-        ].index[0]
-        + 1
-    )
-    gini_coeffecient = gini(vals_sorted_stake["Stake (NEAR)"].to_numpy())
-except:  # HACK: give a retry on error
-    emsg = st.text("Error loading data, will retry in 10s, or try refreshing page")
-    sleep(10)
-    blocktimes = get_blocktimes()
-    status = get_status()
-    validators = get_validators()
-    # not using for now
-    # blocks = get_blocks()
-    # epochs = get_epochs()
+vals_sorted_stake = validators.sort_values(
+    by="Stake (NEAR)", ascending=False
+).reset_index(drop=True)
+vals_sorted_stake["Cumulative Stake (NEAR)"] = vals_sorted_stake[
+    "Stake (NEAR)"
+].cumsum()
+vals_sorted_stake["Proportion of Stake"] = (
+    vals_sorted_stake["Stake (NEAR)"] / total_staked
+)
+nakamoto_line = 0.33 * total_staked
 
-    # block_height = status["last_block_height"] # don't care about this right now
-    last_update = parser.parse(status["last_block_time"]).strftime(
-        "%Y-%m-%d %H:%M:%S %Z"
-    )
-    avg_blocktime = blocktimes["avg"]
-    validator_names = validators.account_id
-    total_staked = validators["Stake (NEAR)"].sum()
-
-    vals_sorted_stake = validators.sort_values(
-        by="Stake (NEAR)", ascending=False
-    ).reset_index(drop=True)
-    vals_sorted_stake["Cumulative Stake (NEAR)"] = vals_sorted_stake[
-        "Stake (NEAR)"
-    ].cumsum()
-    vals_sorted_stake["Proportion of Stake"] = (
-        vals_sorted_stake["Stake (NEAR)"] / total_staked
-    )
-    nakamoto_line = 0.33 * total_staked
-
-    nakamoto_coeffecient = (
-        vals_sorted_stake[
-            vals_sorted_stake["Cumulative Stake (NEAR)"] > nakamoto_line
-        ].index[0]
-        + 1
-    )
-    gini_coeffecient = gini(vals_sorted_stake["Stake (NEAR)"].to_numpy())
-    emsg.text("")
+nakamoto_coeffecient = (
+    vals_sorted_stake[
+        vals_sorted_stake["Cumulative Stake (NEAR)"] > nakamoto_line
+    ].index[0]
+    + 1
+)
+gini_coeffecient = gini(vals_sorted_stake["Stake (NEAR)"].to_numpy())
 
 
 st.subheader("Overall blockchain statistics")

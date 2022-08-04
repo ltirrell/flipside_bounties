@@ -87,30 +87,29 @@ def get_epochs() -> pd.DataFrame:
 
 
 @st.cache(ttl=60)
-def get_validators(drop_inactive=False) -> pd.DataFrame:
+def get_validators() -> pd.DataFrame:
     url = f"{fig_url}/validators"
     r = requests.get(url)
     data = r.json()
     df = pd.DataFrame(data)
     df["Stake (NEAR)"] = convert_to_near(df.stake)
     df["last_time"] = pd.to_datetime(df["last_time"])
-    if (
-        drop_inactive
-    ):  # NOTE: this is causing issues for some reason, using one of 2 different methods
-        new_df = df.copy()[df.active == True].reset_index(drop=True)
-        if len(new_df) == 0:
-            # looking at one day before today
-            new_df = df.copy()[
-                df.last_time >= pd.to_datetime(datetime.today(), utc=True)
-            ].reset_index(drop=True)
-        if len(new_df) == 0:
-            # looking at 8 hrs before today
-            td = pd.Timedelta(8, "h")
-            new_df = df.copy()[
-                df.last_time >= pd.to_datetime(datetime.today(), utc=True - td)
-            ].reset_index(drop=True)
-        return new_df
-    return df
+    # NOTE: this is causing issues for some reason, using one of 4 different methods, then returning the full dataset
+    new_df = df.copy()[df.active == True].reset_index(drop=True)
+    if len(new_df) == 0:
+        # looking at today
+        new_df = df.copy()[
+            df.last_time >= pd.to_datetime(datetime.today(), utc=True)
+        ].reset_index(drop=True)
+    if len(new_df) == 0:
+        # looking at 8 hrs before today
+        td = pd.Timedelta(8, "h")
+        new_df = df.copy()[
+            df.last_time >= pd.to_datetime(datetime.today(), utc=True - td)
+        ].reset_index(drop=True)
+    if len(new_df) == 0:
+        new_df = df.copy()
+    return new_df
 
 
 @st.cache(ttl=60)
