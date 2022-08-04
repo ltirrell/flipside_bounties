@@ -105,7 +105,7 @@ def get_validators() -> pd.DataFrame:
         # looking at 8 hrs before today
         td = pd.Timedelta(8, "h")
         new_df = df.copy()[
-            df.last_time >= pd.to_datetime(datetime.today(), utc=True - td)
+            df.last_time >= pd.to_datetime(datetime.today(), utc=True) - td
         ].reset_index(drop=True)
     if len(new_df) == 0:
         new_df = df.copy()
