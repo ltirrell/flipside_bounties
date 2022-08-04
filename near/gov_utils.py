@@ -1,17 +1,14 @@
-import io
-import random
-from datetime import datetime
 from collections.abc import Mapping
-from pathlib import Path
-from typing import Dict, Iterable, Union
+from datetime import datetime
+import logging
+from typing import Iterable, Union
 
 import altair as alt
 import numpy as np
 import pandas as pd
 import requests
 import streamlit as st
-from PIL import Image
-from shroomdk import ShroomDK, errors
+from shroomdk import ShroomDK
 
 fs_key = st.secrets["flipside"]["api_key"]
 fig_key = st.secrets["figment"]["api_key"]
@@ -33,7 +30,7 @@ __all__ = [
     "gini",
     "get_fs_validator_data",
     "alt_lines_bar",
-    "fig_key"
+    "fig_key",
 ]
 
 
@@ -94,7 +91,7 @@ def get_validators() -> pd.DataFrame:
     url = f"{fig_url}/validators"
     r = requests.get(url)
     data = r.json()
-    print(r)
+    logging.info(r)
     df = pd.DataFrame(data)
     # df = df[df.active == True].reset_index(drop=True) # NOTE: this is causing issues for some reason
     df["last_time"] = pd.to_datetime(df["last_time"])
