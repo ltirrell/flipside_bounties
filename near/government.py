@@ -39,6 +39,7 @@ try:
     validator_names = validators.account_id
     total_staked = validators["Stake (NEAR)"].sum()
     validators
+    print(fig_key)
     vals_sorted_stake = validators.sort_values(
         by="Stake (NEAR)", ascending=False
     ).reset_index(drop=True)

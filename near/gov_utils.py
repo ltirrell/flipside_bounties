@@ -33,6 +33,7 @@ __all__ = [
     "gini",
     "get_fs_validator_data",
     "alt_lines_bar",
+    "fig_key"
 ]
 
 
