@@ -23,11 +23,11 @@ Exploring NEAR governance, with a focus on the current validator set.
 
 
 st.header("State of the Unions")
-
+drop_inactive = st.checkbox("Remove inactive validators from analysis. NOTE: this is causing issues with data analysis and is being actively debugged, so it may not work...")
 try:
     blocktimes = get_blocktimes()
     status = get_status()
-    validators = get_validators()
+    validators = get_validators(drop_inactive)
     # not using for now
     # blocks = get_blocks()
     # epochs = get_epochs()
@@ -105,6 +105,7 @@ c3.metric("Last updated", last_update)
 c1.metric("Total Staked NEAR", f"{total_staked:,.2f}")
 c2.metric("Nakamoto Coefficient", nakamoto_coeffecient)
 c3.metric("Gini Coefficient", f"{gini_coeffecient:.3f}")
+
 with st.expander("Defintions"):
     st.write(
         """
