@@ -38,7 +38,7 @@ try:
     avg_blocktime = blocktimes["avg"]
     validator_names = validators.account_id
     total_staked = validators["Stake (NEAR)"].sum()
-
+    validators
     vals_sorted_stake = validators.sort_values(
         by="Stake (NEAR)", ascending=False
     ).reset_index(drop=True)
