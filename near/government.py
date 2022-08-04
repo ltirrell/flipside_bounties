@@ -32,6 +32,10 @@ try:
     # blocks = get_blocks()
     # epochs = get_epochs()
 
+    validators
+    blocktimes
+    status
+
     # block_height = status["last_block_height"] # don't care about this right now
     last_update = parser.parse(status["last_block_time"]).strftime(
         "%Y-%m-%d %H:%M:%S %Z"
@@ -39,10 +43,7 @@ try:
     avg_blocktime = blocktimes["avg"]
     validator_names = validators.account_id
     total_staked = validators["Stake (NEAR)"].sum()
-    validators
-    blocktimes
-    status
-
+    
     vals_sorted_stake = validators.sort_values(
         by="Stake (NEAR)", ascending=False
     ).reset_index(drop=True)
