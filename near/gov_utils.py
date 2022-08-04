@@ -93,6 +93,7 @@ def get_validators() -> pd.DataFrame:
     url = f"{fig_url}/validators"
     r = requests.get(url)
     data = r.json()
+    print(r)
     df = pd.DataFrame(data)
     # df = df[df.active == True].reset_index(drop=True) # NOTE: this is causing issues for some reason
     df["last_time"] = pd.to_datetime(df["last_time"])
