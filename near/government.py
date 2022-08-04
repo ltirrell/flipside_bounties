@@ -32,7 +32,7 @@ try:
     # blocks = get_blocks()
     # epochs = get_epochs()
     # block_height = status["last_block_height"] # don't care about this right now
-
+    validators
     last_update = parser.parse(status["last_block_time"]).strftime(
         "%Y-%m-%d %H:%M:%S %Z"
     )
