@@ -151,7 +151,7 @@ Data was acquired from Flipside Crypto's NEAR tables, as well as [Figment's Enri
 
 Governance queries were adopted from [excellent work](https://app.flipsidecrypto.com/dashboard/citizens-of-near-THIJUc) done on previous bounties by [@darksoulsfanlol](https://twitter.com/darksoulsfanlol).
 
-All code is available on github, with the interactive validator query in the "My representative" section available [here](https://github.com/ltirrell/flipside_bounties/blob/main/near/gov_utils.py#L269).
+All code is available on github, with the interactive validator query in the "My representative" section available [here](https://github.com/ltirrell/flipside_bounties/blob/main/near/gov_utils.py#L278).
 
 Other queries are hosted on Flipside Crytpo here:
 """
