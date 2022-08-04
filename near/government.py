@@ -122,16 +122,20 @@ except errors.UserError:
 
 st.subheader("Year to date record")
 """We can see our Governor's daily stats since 2022-01-01, and examine the total staked balance, number of blocks produced, and number of transactions processed in those blocks for each day."""
+var = st.radio(
+    "Choose which variable to look at:", ["Blocks produced", "Transactions Processed"]
+)
 st.altair_chart(
-    alt_lines_bar(df, validator).properties(height=500),
+    alt_lines_bar(df, validator, value_vars=[var]).properties(height=500),
     use_container_width=True,
 )
 load_fs_msg.text("")
 
-validator_epochs = get_validator_epochs(validator)
+st.subheader("Recent results")
 """
 Additionally, let's take a look at a more fine-grained voting record: how our Governor performed in the last 100 epochs. We can see the number of blocks produced, and NEAR balance.
 """
+validator_epochs = get_validator_epochs(validator)
 st.altair_chart(
     alt_lines_bar(
         validator_epochs,
@@ -150,6 +154,8 @@ f"""
 Data was acquired from Flipside Crypto's NEAR tables, as well as [Figment's Enriched APIs](https://docs.figment.io/network-documentation/near/enriched-apis) for more real time information.
 
 Governance queries were adopted from [excellent work](https://app.flipsidecrypto.com/dashboard/citizens-of-near-THIJUc) done on previous bounties by [@darksoulsfanlol](https://twitter.com/darksoulsfanlol).
+
+The "Year to date record" secion uses Flipside data, while other sections use Figment's API.
 
 All code is available on github, with the interactive validator query in the "My representative" section available [here](https://github.com/ltirrell/flipside_bounties/blob/main/near/gov_utils.py#L278).
 

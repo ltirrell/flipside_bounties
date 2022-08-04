@@ -1,6 +1,5 @@
 from collections.abc import Mapping
 from datetime import datetime
-import logging
 from typing import Iterable, Union
 
 import altair as alt
@@ -30,7 +29,6 @@ __all__ = [
     "gini",
     "get_fs_validator_data",
     "alt_lines_bar",
-    "fig_key",
 ]
 
 
@@ -128,6 +126,11 @@ def get_validator_epochs(validator: str) -> pd.DataFrame:
 
     df = pd.DataFrame(data)
     df["Staking Balance (NEAR)"] = convert_to_near(df.staking_balance)
+    df["last_time"] = pd.to_datetime(df["last_time"])
+    # Remove some dates which show up at the Unix Epoch
+    df = df[df.last_time >= pd.to_datetime("2019-01-01", utc=True)].reset_index(
+        drop=True
+    )
     return df
 
 
@@ -338,10 +341,10 @@ def alt_lines_bar(
         empty="none",
         clear="mouseout",
     )
-    lines = base.mark_line(color="#004D40", interpolate="monotone").encode(
+    lines = base.mark_line(color="#FFC107", interpolate="monotone").encode(
         y=alt.Y(variable_col),
     )
-    bars = base.mark_bar(width=10).encode(
+    bars = base.mark_bar(interpolate="monotone", width=3).encode(
         y=alt.Y(
             "value",
             title="Voting Record",
@@ -349,7 +352,7 @@ def alt_lines_bar(
         color=alt.Color(
             "variable",
             title="Voting Record",
-            scale=alt.Scale(domain=columns, range=["#1E88E5", "#FFC107"]),
+            scale=alt.Scale(domain=columns, range=["#1E88E5", "#004D40"]),
         ),
     )
 
@@ -376,5 +379,5 @@ def alt_lines_bar(
         )
         .add_selection(selection)
     )
-    chart = alt.layer((lines + points + rule), bars).resolve_scale(y="independent")
+    chart = alt.layer(bars, (lines + points + rule)).resolve_scale(y="independent")
     return chart.interactive()
