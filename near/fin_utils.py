@@ -277,7 +277,7 @@ def get_rewards_by_token(dfs, ft):
     return rewards_by_token
 
 
-@st.cache(ttl=(30))
+@st.cache(ttl=(3600 * 12))
 def get_pool_deposit_withdraws(dfs, ft):
     pool_deposit_withdraws = dfs["pool_deposit_withdraws"]
 
