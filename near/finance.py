@@ -472,11 +472,3 @@ farm_accounts = pd.concat(
 )
 c2.altair_chart(alt_farm_bar(farm_accounts, farm_id), use_container_width=True)
 
-for k, v in ref_data.items():
-    st.subheader(k)
-    try:
-        v["df"]
-    except:
-        v["data"]
-
-dfs
