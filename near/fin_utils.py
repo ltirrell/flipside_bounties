@@ -39,7 +39,7 @@ __all__ = [
     "alt_farm_date_line",
     "alt_reward_bar",
     "alt_pool_liquidity",
-    "alt_stable_user"
+    "alt_stable_user",
 ]
 
 
@@ -220,7 +220,7 @@ def get_accounts(seed: str) -> dict:
     return data
 
 
-@st.cache(ttl=(3600 * 12))
+@st.cache(ttl=(3600 * 12), allow_output_mutation=True)
 def load_data(
     query_information: Mapping[str, Mapping[str, str]] = query_information
 ) -> Mapping[str, pd.DataFrame]:
