@@ -6,12 +6,12 @@ import altair as alt
 import pandas as pd
 import requests
 import streamlit as st
-from shroomdk import ShroomDK
+# from shroomdk import ShroomDK
 
-fs_key = st.secrets["flipside"]["api_key"]
-fig_key = st.secrets["figment"]["api_key"]
-fig_url = f"https://near--indexer.datahub.figment.io/apikey/{fig_key}"
-sdk = ShroomDK(fs_key)
+# fs_key = st.secrets["flipside"]["api_key"]
+# fig_key = st.secrets["figment"]["api_key"]
+# fig_url = f"https://near--indexer.datahub.figment.io/apikey/{fig_key}"
+# sdk = ShroomDK(fs_key)
 
 __all__ = [
     # Variables/info/schema
