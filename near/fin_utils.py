@@ -6,6 +6,7 @@ import altair as alt
 import pandas as pd
 import requests
 import streamlit as st
+
 # from shroomdk import ShroomDK
 
 # fs_key = st.secrets["flipside"]["api_key"]
@@ -38,6 +39,7 @@ __all__ = [
     "alt_farm_date_line",
     "alt_reward_bar",
     "alt_pool_liquidity",
+    "alt_stable_user"
 ]
 
 
@@ -775,3 +777,29 @@ def alt_pool_liquidity(df, analysis_type, metric, grouping, date_range, s):
             )
         )
     return chart.interactive().properties(height=800)
+
+
+def alt_stable_user(df):
+    chart = (
+        alt.Chart(df)
+        .mark_bar()
+        .encode(
+            x=alt.X("Address", sort="-y"),
+            y="Total Amount",
+            color=alt.Color(
+                "Address",
+                sort=alt.EncodingSortField(
+                    "Total Amount", op="max", order="descending"
+                ),
+            ),
+            tooltip=[
+                alt.Tooltip("Symbol"),
+                alt.Tooltip("Address"),
+                alt.Tooltip("Total Amount"),
+            ],
+        )
+        .interactive()
+        .properties(height=500)
+    )
+
+    return chart

@@ -12,7 +12,7 @@ st.set_page_config(
 st.title("Citizens of NEAR: Financial District")
 st.caption(
     """
-Investigating the *de facto* Central Bank within the NEAR ecosystem. 
+Investigating the *de facto* Central Bank within the NEAR ecosystem, and current stablecoin holders.
 """
 )
 with st.expander("Data Sources and Methods"):
@@ -472,3 +472,26 @@ farm_accounts = pd.concat(
 )
 c2.altair_chart(alt_farm_bar(farm_accounts, farm_id), use_container_width=True)
 
+st.header("Stablecoins")
+st.write(
+    """
+NEAR users are also fans of stable assets. We tracked the largest stablecoin holders, based on net stablecoin transferts (`total amount sent out - total amount received`)
+
+**Caveat**: this data does not contain history from the beginning of the NEAR blockchain, so analysis will not be fully accurate.
+    """
+)
+stablecoin_top_users = dfs['stablecoin_top_users']
+c1, c2 = st.columns([1, 3])
+num = c1.slider("Number of Tokens / Pools:", 1, 100, 20, key='stable_num')
+coin = c1.selectbox(
+    "Choose a stablecoin",
+    pd.unique(sorted(stablecoin_top_users["Symbol"])),
+    key="stable_coin_select",
+)
+
+df = stablecoin_top_users
+df['row'] = pd.to_numeric(df['ROW_NUMBER'])
+df['Total Amount'] = pd.to_numeric(df['Total Amount'])
+df = df[(df.Symbol == coin) & (df['row'] <= num)]
+
+c2.altair_chart(alt_stable_user(df), use_container_width=True)
