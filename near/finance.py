@@ -249,14 +249,14 @@ if grouping == "By Date":
         selection = c1.selectbox(
             "Choose a pool",
             sorted(pd.to_numeric(deposit_withdraws_subset["POOL_ID"]).unique()),
-            key="pool_deposits",
+            key="pool_deposits_pool",
         )
     if analysis_type == "By Token":
         selection = c1.selectbox(
             "Choose a token",
             deposit_withdraws_subset["Symbol"].unique(),
             format_func=lambda x: f"{deposit_withdraws_subset[deposit_withdraws_subset['Symbol'] == x]['name'].values[0]} ({x})",
-            key="pool_deposits",
+            key="pool_deposits_token",
         )
 else:
     date_range = None
@@ -265,7 +265,7 @@ else:
         1,
         100,
         20,
-        key="pool_deposits",
+        key="pool_deposits_date",
     )
 
 
