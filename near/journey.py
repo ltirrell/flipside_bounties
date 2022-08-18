@@ -289,6 +289,12 @@ c2.metric(
     "Average Number of Users, per Protocol",
     f"{num_users['Number of Users'].mean():.2f}",
 )
+c2.write(
+    f"""As we can see, our Finance and Arts Districts are used heavily by users.
+    
+2 addresses from Ref Finance are in the top 10 ({num_users[num_users['Near Transaction Receiver'] == 'v2.ref-finance.near']['Number of Users'].values[0] / near_users:.1%} and {num_users[num_users['Near Transaction Receiver'] == 'v2.ref-farming.near']['Number of Users'].values[0] / near_users:.1%} of users interacting with these addresses after bridging), as well as the NFT marketplace Paras ({num_users[num_users['Near Transaction Receiver'] == 'marketplace.paras.near']['Number of Users'].values[0] / near_users:.1%} of users)
+    """
+)
 
 
 st.header("Crosschain comparison")
