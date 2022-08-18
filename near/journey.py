@@ -7,6 +7,8 @@ import streamlit as st
 import near_info
 from journey_utils import *
 
+alt.data_transformers.disable_max_rows()
+
 st.set_page_config(
     page_title="Citizens of NEAR: The Journeymen", page_icon="🌆", layout="wide"
 )
@@ -70,7 +72,7 @@ c1.metric(
 )
 c2.altair_chart(alt_user_chart(near_user), use_container_width=True)
 
-st.subheader("First Transaction")
+st.subheader("First Transaction: Method Name")
 """
 We can see which type of transaction is done first by a user. We can choose between two transaction:
 - `Received`: the first transaction where the user's address is the *transaction receiver*. This means a user received something, or another address acted upon their address.
@@ -201,6 +203,91 @@ c2.altair_chart(
         rainbow_by_address[rainbow_by_address.VARIABLE == "sender"], metric, ordering
     ),
     use_container_width=True,
+)
+
+st.subheader("NEAR Bridger: user interactions")
+near_interactions = fs_data["near_interactions"].copy()
+near_interactions["VALUE"] = pd.to_numeric(near_interactions["VALUE"])
+num_recievers = (
+    near_interactions[near_interactions.VARIABLE == "num_receivers"]
+    .rename(
+        columns={"GROUPER": "Near User", "VALUE": "Number of Addresses Interacted With"}
+    )
+    .sort_values(by="Number of Addresses Interacted With", ascending=False)
+    .reset_index(drop=True)
+)
+num_methods = (
+    near_interactions[near_interactions.VARIABLE == "num_methods"]
+    .rename(columns={"GROUPER": "Near User", "VALUE": "Number of Methods Used"})
+    .sort_values(by="Number of Methods Used", ascending=False)
+    .reset_index(drop=True)
+)
+num_users = (
+    near_interactions[near_interactions.VARIABLE == "num_users"]
+    .rename(
+        columns={"GROUPER": "Near Transaction Receiver", "VALUE": "Number of Users"}
+    )
+    .sort_values(by="Number of Users", ascending=False)
+    .reset_index(drop=True)
+)
+
+
+tx_receivers = len(num_users["Near Transaction Receiver"].unique())
+near_users = len(num_methods["Near User"].unique())
+
+c1, c2, c3 = st.columns(3)
+c1.write(
+    "Let's examine what addresses the NEAR bridgers interact with after moving assets from Ethereum."
+)
+c2.metric("Number of Near Bridgers", near_users)
+c3.metric("Number of Addresses Interacted with", tx_receivers)
+
+st.write(
+    """We'll look at:
+- the number of addresses a bridger interacted with,
+- the number of methods used by a bridger,
+- and the number of users interacting with specific NEAR addresses
+"""
+)
+
+c1, c2 = st.columns([3, 1])
+c1.altair_chart(
+    alt_bar_interactions(
+        num_recievers,
+        "Near User",
+        "Number of Addresses Interacted With",
+        "User metrics: Number of Addresses Interacted With",
+    )
+)
+c2.metric(
+    "Average number of addresses interacted with",
+    f"{num_recievers['Number of Addresses Interacted With'].mean():.2f}",
+)
+c1, c2 = st.columns([1, 3])
+c1.metric(
+    "Average number of Methods used",
+    f"{num_methods['Number of Methods Used'].mean():.2f}",
+)
+c2.altair_chart(
+    alt_bar_interactions(
+        num_methods,
+        "Near User",
+        "Number of Methods Used",
+        title="User metrics: Number of Methods Used",
+    )
+)
+c1, c2 = st.columns([3, 1])
+c1.altair_chart(
+    alt_bar_interactions(
+        num_users,
+        "Near Transaction Receiver",
+        "Number of Users",
+        title="Protocol Metrics: Number of Users Interacting with each protocol",
+    )
+)
+c2.metric(
+    "Average Number of Users, per Protocol",
+    f"{num_users['Number of Users'].mean():.2f}",
 )
 
 

@@ -25,6 +25,7 @@ __all__ = [
     "alt_date_area",
     "alt_ordered_bar_receiver",
     "alt_ordered_bar_sender",
+    "alt_bar_interactions"
 ]
 
 
@@ -44,6 +45,11 @@ query_information = {
         "api": "https://node-api.flipsidecrypto.com/api/v2/queries/439ecbf1-dc9e-4fe7-912a-70695119c7d1/data/latest",
         "query": "https://app.flipsidecrypto.com/velocity/queries/439ecbf1-dc9e-4fe7-912a-70695119c7d1",
         "short_name": "rainbow",
+    },
+    "Near User Interactions": {
+        "api": "https://node-api.flipsidecrypto.com/api/v2/queries/082d8772-6090-496b-b276-008edc882b8a/data/latest",
+        "query": "https://app.flipsidecrypto.com/velocity/queries/082d8772-6090-496b-b276-008edc882b8a",
+        "short_name": "near_interactions",
     },
 }
 
@@ -77,7 +83,7 @@ def gini(array: np.array) -> float:
 
 
 # Data
-@st.cache(ttl=(3600 * 12), allow_output_mutation=True)
+@st.cache(ttl=(60 * 60), allow_output_mutation=True)
 def load_data(
     query_information: Mapping[str, Mapping[str, str]] = query_information
 ) -> Mapping[str, pd.DataFrame]:
@@ -325,6 +331,26 @@ def alt_ordered_bar_sender(df, metric, ordering):
                     format=",.2f",
                 ),
             ],
+        )
+        .interactive()
+        .properties(height=500)
+    )
+    return chart
+
+
+def alt_bar_interactions(df, x_name, y_name, title):
+    df = df.iloc[:30]
+    chart = (
+        alt.Chart(df, title=title)
+        .mark_bar()
+        .encode(
+            x=alt.X(x_name, sort="-y"),
+            y=alt.Y(y_name),
+            color=alt.Color(
+                x_name,
+                sort=alt.EncodingSortField(y_name, op="max", order="descending"),
+            ),
+            tooltip=[alt.Tooltip(x_name), alt.Tooltip(y_name)],
         )
         .interactive()
         .properties(height=500)
