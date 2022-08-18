@@ -195,7 +195,7 @@ ordering = c1.radio(
     [True, False],
     format_func=lambda x: "Ascending" if x else "Descending",
     index=1,
-    key="address_metric_sender",
+    key="address_metric_order",
 )
 c1.metric("Gini Coeffecient", f"{g:.3f}")
 c2.altair_chart(
