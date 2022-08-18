@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 from dateutil import parser
+from scipy.stats import spearmanr
 from shroomdk import errors
 
 from gov_utils import *
@@ -134,14 +135,28 @@ except errors.UserError:
     df = get_fs_validator_data(validator, cached=False)
 
 st.subheader("Year to date record")
-"""We can see our Governor's daily stats since 2022-01-01, and examine the total staked balance, number of blocks produced, and number of transactions processed in those blocks for each day."""
-var = st.selectbox(
-    "Choose which variable to look at:", [ "Transactions Processed", "Blocks produced",]
+st.write(
+    """We can see our Governor's daily stats since 2022-01-01, and examine the total staked balance, number of blocks produced, and number of transactions processed in those blocks for each day."""
 )
-st.altair_chart(
+var = st.selectbox(
+    "Choose which metric to examine",
+    [
+        "Transactions Processed",
+        "Blocks produced",
+    ],
+)
+c1, c2 = st.columns([2, 1])
+c1.altair_chart(
     alt_lines_bar(df, validator, value_vars=[var]).properties(height=500),
     use_container_width=True,
 )
+# TODO: add proportion of stake instead of stake? may need more complex analysis though
+corr = spearmanr(df["Stake (NEAR)"], df[var])
+c2.altair_chart(
+    alt_scatter(df, validator, var).properties(height=500),
+    use_container_width=True,
+)
+c2.write(f"Correlation: {corr.correlation:.2f} (p-value={corr.pvalue:.3f})")
 load_fs_msg.text("")
 
 st.subheader("Results by Epoch")
@@ -162,7 +177,22 @@ st.altair_chart(
 )
 
 
-
+st.subheader("Results by Epoch")
+"""
+Additionally, let's take a look at a more completed voting record: how our Governor performed during each epoch where it produced blocks. We can see the number of blocks produced, and NEAR balance.
+"""
+validator_epochs = get_validator_epochs(validator)
+st.altair_chart(
+    alt_lines_bar(
+        validator_epochs,
+        validator,
+        date_col="last_time",
+        variable_col="Staking Balance (NEAR)",
+        value_vars=["produced_blocks"],
+        date_type=("yearmonthdatehours"),
+    ).properties(height=500),
+    use_container_width=True,
+)
 
 # TODO: look to add this in:
 # account_info = get_account_info("ltirrell.near")

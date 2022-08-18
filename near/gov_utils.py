@@ -29,6 +29,7 @@ __all__ = [
     "gini",
     "get_fs_validator_data",
     "alt_lines_bar",
+    "alt_scatter",
 ]
 
 
@@ -381,3 +382,19 @@ def alt_lines_bar(
     )
     chart = alt.layer(bars, (lines + points + rule)).resolve_scale(y="independent")
     return chart.interactive()
+
+
+def alt_scatter(df, validator, variable_col):
+    chart = (
+        alt.Chart(df, title=f"Stake vs {variable_col}: {validator}")
+        .mark_circle(color="#004D40")
+        .encode(
+            x=alt.X("Stake (NEAR)", scale=alt.Scale(zero=False)),
+            y=alt.Y(variable_col, scale=alt.Scale(zero=False)),
+            tooltip=[
+                alt.Tooltip("Stake (NEAR)", format=",.2f"),
+                alt.Tooltip(variable_col, format=",.2f"),
+            ],
+        )
+    )
+    return chart
