@@ -1,1 +1,1 @@
-web: sh setup.sh && streamlit run near/finance.py
+web: sh setup.sh && streamlit run near/journey.py
