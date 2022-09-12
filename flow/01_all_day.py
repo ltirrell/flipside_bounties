@@ -348,6 +348,8 @@ combined_nft = combined_nft.rename(
     },
     axis=1,
 )
+combined_nft = combined_nft.drop_duplicates(subset="NFT_ID")
+combined_nft = combined_nft.apply(update_player_name, axis=1)
 metrics = [
     "Transactions",
     "Total Purchases (USD)",
@@ -376,13 +378,18 @@ df = (
     .iloc[: int(number_of_collections)]
     .reset_index(drop=True)
 )
-
+df = df.drop_duplicates(subset="NFT_ID")
 chart = (
     alt.Chart(df)
     .mark_circle(size=69)
     .encode(
         x=alt.X("NFT_ID:Q", title="NFT ID"),
-        y=alt.Y(f"{metric}:Q", scale=alt.Scale(zero=False,)),
+        y=alt.Y(
+            f"{metric}:Q",
+            scale=alt.Scale(
+                zero=False,
+            ),
+        ),
         color=alt.Color(
             f"{metric}",
             legend=alt.Legend(title=f"{metric}", symbolLimit=0),

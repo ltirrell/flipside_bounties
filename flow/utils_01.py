@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 
-__all__ = ["query_information", "load_data", "date_df"]
+__all__ = ["query_information", "load_data", "date_df", "update_player_name"]
 
 
 query_information = {
@@ -73,7 +73,8 @@ date_df = pd.DataFrame(
 
 date_df["DATE"] = pd.to_datetime(date_df.Date)
 
-@st.cache(ttl=(3600*12), allow_output_mutation=True)
+
+@st.cache(ttl=(3600 * 12), allow_output_mutation=True)
 def load_data(
     query_information: Mapping[str, Mapping[str, str]] = query_information
 ) -> pd.DataFrame:
@@ -104,3 +105,9 @@ def load_data(
     dfs["combined_nft"] = pd.concat(combined).reset_index()
 
     return dfs
+
+
+def update_player_name(row):
+    if row.PLAYER == "N/A":
+        row.PLAYER = row.TEAM
+    return row
