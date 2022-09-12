@@ -73,7 +73,7 @@ date_df = pd.DataFrame(
 
 date_df["DATE"] = pd.to_datetime(date_df.Date)
 
-@st.cache(ttl=(3600*12))
+@st.cache(ttl=(3600*12), allow_output_mutation=True)
 def load_data(
     query_information: Mapping[str, Mapping[str, str]] = query_information
 ) -> pd.DataFrame:
