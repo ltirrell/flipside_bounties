@@ -204,7 +204,7 @@ elif grouping == "By Position":
 st.altair_chart(chart + date_rules, use_container_width=True)
 
 
-st.header("User purchases")
+st.header("User Purchases")
 user_tx = dfs["user_tx"].copy()
 user_tx = user_tx.rename(
     {

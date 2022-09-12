@@ -9,7 +9,7 @@ __all__ = ["query_information", "load_data", "date_df"]
 
 
 query_information = {
-    "NFL All Day: User Creation Date": {
+    "NFL All Day: Wallet Creation": {
         "api": "https://node-api.flipsidecrypto.com/api/v2/queries/666a2a57-105a-4a6e-a54d-8a7087f56411/data/latest",
         "query": "https://app.flipsidecrypto.com/velocity/queries/666a2a57-105a-4a6e-a54d-8a7087f56411",
         "short_name": "user_creation",
@@ -19,32 +19,32 @@ query_information = {
         "query": "https://app.flipsidecrypto.com/velocity/queries/2265fd42-bcd2-49e3-b464-81258cc3ef96",
         "short_name": "daily_sales",
     },
-    "NFL All Day: User Transactions": {
+    "NFL All Day: User Purchases": {
         "api": "https://node-api.flipsidecrypto.com/api/v2/queries/cf0f3961-51dc-4eaa-97ea-08882eb762ee/data/latest",
         "query": "https://app.flipsidecrypto.com/velocity/queries/cf0f3961-51dc-4eaa-97ea-08882eb762ee",
         "short_name": "user_tx",
     },
-    "NFL All Day: Player Transactions": {
+    "NFL All Day: Purchases by Player": {
         "api": "https://node-api.flipsidecrypto.com/api/v2/queries/7c40aa00-8870-485c-86f9-06adc6552b3a/data/latest",
         "query": "https://app.flipsidecrypto.com/velocity/queries/7c40aa00-8870-485c-86f9-06adc6552b3a",
         "short_name": "player_tx",
     },
-    "NFL All Day: NFT Transactions, by Transaction Count": {
+    "NFL All Day: Popular NFT Collections, by Transaction Count": {
         "api": "https://node-api.flipsidecrypto.com/api/v2/queries/1162b91a-4a0f-4dde-93eb-0b5f53ec3c22/data/latest",
         "query": "https://app.flipsidecrypto.com/velocity/queries/1162b91a-4a0f-4dde-93eb-0b5f53ec3c22",
         "short_name": "nft_tx",
     },
-    "NFL All Day: NFT Transactions, by Average Price": {
+    "NFL All Day: Popular NFT Collections, by Average Price": {
         "api": "https://node-api.flipsidecrypto.com/api/v2/queries/a56db5ee-276b-4f71-9ca9-3528a0d9c5c5/data/latest",
         "query": "https://app.flipsidecrypto.com/velocity/queries/a56db5ee-276b-4f71-9ca9-3528a0d9c5c5",
         "short_name": "nft_avg",
     },
-    "NFL All Day: NFT Transactions, by Maximum Sale Price": {
+    "NFL All Day: Popular NFT Collections, by Maximum Sale Price": {
         "api": "https://node-api.flipsidecrypto.com/api/v2/queries/61de8c77-8d02-4a12-8b48-e7af79c4ac6b/data/latest",
         "query": "https://app.flipsidecrypto.com/velocity/queries/61de8c77-8d02-4a12-8b48-e7af79c4ac6b",
         "short_name": "nft_max",
     },
-    "NFL All Day: NFT Transactions, by Total Sale Price": {
+    "NFL All Day: Popular NFT Collections, by Total Sale Price": {
         "api": "https://node-api.flipsidecrypto.com/api/v2/queries/badf76b4-8ff8-46dc-8ead-93a3fc5d809b/data/latest",
         "query": "https://app.flipsidecrypto.com/velocity/queries/badf76b4-8ff8-46dc-8ead-93a3fc5d809b",
         "short_name": "nft_total",
@@ -73,7 +73,7 @@ date_df = pd.DataFrame(
 
 date_df["DATE"] = pd.to_datetime(date_df.Date)
 
-@st.cache(ttl=(3600*12), allow_output_mutation=True)
+@st.cache(ttl=(3600*12))
 def load_data(
     query_information: Mapping[str, Mapping[str, str]] = query_information
 ) -> pd.DataFrame:
