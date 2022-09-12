@@ -4,7 +4,6 @@ import streamlit as st
 
 from utils_01 import *
 
-
 st.set_page_config(
     page_title="NFL ALL DAY: Tournament Kickoff", page_icon="🏈", layout="wide"
 )
@@ -402,10 +401,11 @@ chart = (
             alt.Tooltip("MOMENT_TIER", title="NFT Rarity"),
             alt.Tooltip("PLAY_TYPE", title="Play Type"),
             alt.Tooltip("TOTAL_CIRCULATION", title="Collection Size"),
-            ]
+        ]
         + [alt.Tooltip(x, format=",.1f") for x in metrics],
-        href="NFLALLDAY_ASSETS_URL"
+        href="NFLALLDAY_ASSETS_URL",
     )
     .properties(height=1000)
     .interactive()
 )
+st.altair_chart(chart, use_container_width=True)
