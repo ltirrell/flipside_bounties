@@ -382,9 +382,7 @@ chart = (
     .mark_circle(size=69)
     .encode(
         x=alt.X("NFT_ID:Q", title="NFT ID"),
-        y=alt.Y(
-            f"{metric}:Q",
-        ),
+        y=alt.Y(f"{metric}:Q", scale=alt.Scale(zero=False,)),
         color=alt.Color(
             f"{metric}",
             legend=alt.Legend(title=f"{metric}", symbolLimit=0),
