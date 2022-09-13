@@ -54,7 +54,9 @@ with st.expander("Data Sources and Methods"):
     ```
     - Daily sales were calculated by `inner join`ing the above metadata with `low.core.ez_nft_sales` on `nft_id`, and grouping by date, team, player and position.
     - The same was join was done to calculate sales based on the `buyer` and `player`, grouping by `buyer` and `player` instead of the date and other variables.
-    - Finally, we looked at popular NFT collections. Due to the size of the dataset, we only looked at the **top 10,000** collections. The top collections based on transaction count, average price, maximum price, and total sale price were queried and combined into a single dataframe, with duplicates dropped (since the same NFT collection may show up in multiple categories, for example a high maximum price and high average price)
+    - Finally, we looked at popular NFT collections. Due to the size of the dataset, we only looked at the **top 10,000** collections. The top collections based on transaction count, average price, maximum price, and total sale price were queried and combined into a single dataframe, with duplicates dropped (since the same NFT collection may show up in multiple categories, for example a high maximum price and high average price).
+        - This results in a dataset of approximately 20,000 NFT collections
+        - When sorting by ascending order, this will result in viewing the collections with lowest values out of these ~20,000 collections. For example, collections ranked 19,000-20,000 by transaction count, as opposed to the absolute lowest collections by transaction count out of all collections.
     
     Queries are hosted on Flipside Crytpo here:
     """
@@ -147,7 +149,7 @@ This could be due to [pack drops](https://nflallday.com/packs) generally occurri
 For data By Team, the defending Super Bowl Champion Los Angeles Rams generally seem to have a high proportion of daily sales.
 Interestingly, after their Week 1 victory, the Buffalo Bills show a large proportion of Daily Sales volume increase.
 
-Generally, wide receivers (WR) have the highest proportion of Daily Sales, followed by running backs (RB) and quarterbacks (QB).
+Generally, wide receivers (WR) have the highest proportion of Daily Sales, followed by running backs (RB) and quarterbacks (QB) when viewed By Position.
 """
 )
 daily_sales = dfs["daily_sales"].copy()
@@ -441,8 +443,9 @@ st.altair_chart(chart, use_container_width=True)
 
 st.header("Popular NFT Collections")
 st.write(
-"""e
-The top (sort order: Descending) or bottom (sort order: Ascending) NFT Collections by various metrics can be seen below.
+"""
+The top (sort order: Descending) or bottom (sort order: Ascending) NFT Collections by various metrics can be seen below. See the [Methods](#methods) section at the top for a description of how these were selected.
+
 - `Ctrl-click` (or `Cmd-click` on Mac) a point to view the video captured in the Moment NFT in a new tab.
 - Use the slider to view more or less collections.
 - Use the dropdown menu to select which metric to view:
