@@ -1,0 +1,14 @@
+altair
+jinja2
+matplotlib
+nfl_data_py
+numpy
+pandas
+Pillow
+plotly
+requests
+scikit-learn
+scipy
+shroomdk
+sqlalchemy
+streamlit

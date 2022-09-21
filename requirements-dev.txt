@@ -1,0 +1,4 @@
+black
+isort
+jupyterlab
+pytest
