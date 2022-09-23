@@ -108,6 +108,14 @@ if __name__ == "__main__":
 
     data_dir = Path("data", get_datetime_string())
     df = combine_flipside_data(data_dir)
+    sales_counts = (
+        df.groupby("NFT_ID")["tx_id"]
+        .count()
+        .reset_index()
+        .sort_values(by="tx_id")
+        .rename(columns={"tx_id": "Sales_Count"})
+    )
+    df = df.merge(sales_counts, on="NFT_ID")
     df.to_csv(
         "data/current_allday_data.csv.gz",
         index=False,

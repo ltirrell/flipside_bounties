@@ -11,4 +11,5 @@ scikit-learn
 scipy
 shroomdk
 sqlalchemy
+statsmodels
 streamlit
