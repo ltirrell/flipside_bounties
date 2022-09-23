@@ -251,7 +251,7 @@ metric = c3.selectbox(
     format_func=lambda x: x.replace("_", " ").title(),
     key="select_stats",
 )
-num_players = c4.slider("Number of top players:", 1, 32, 5, key="slider_stats")
+num_players = c4.slider("Number of top players:", 1, 32, 7, key="slider_stats")
 agg_metric = c5.radio(
     "Aggregation metric",
     ["median", "mean", "count"],
@@ -326,7 +326,7 @@ elif agg_metric == "mean":
 elif agg_metric == "median":
     ytitle = "Median Sale Price ($)"
 
-c1, c2 = st.columns([1, 2])
+c1, c2 = st.columns([2, 5])
 chart = (
     alt.Chart(grouped)
     .mark_circle()
