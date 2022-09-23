@@ -309,8 +309,14 @@ video_url = (
 )
 grouped = grouped.merge(video_url, on=["Date", "Player", "Position", "Team"])
 grouped["Date"] = grouped.Date.dt.tz_localize("US/Pacific")
-players = top_players["player_display_name"].values
-grouped["Top_Player"] = grouped.Player.apply(lambda x: True if x in players else False)
+players = top_players[["player_display_name", "position"]]
+grouped["Top_Player"] = grouped.apply(
+    lambda x: True
+    if x.Player in top_players.player_display_name.values
+    and x.Position in top_players.position.values #HACK gets rid of the LB named Josh Allen
+    else False,
+    axis=1,
+)
 
 if position == "All":
     top_price = grouped[grouped.Top_Player]
