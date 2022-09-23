@@ -1,4 +1,7 @@
 black
 isort
+ipywidgets
 jupyterlab
 pytest
+shap
+xgboost

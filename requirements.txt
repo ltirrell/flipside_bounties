@@ -10,7 +10,6 @@ requests
 scikit-learn
 scipy
 shroomdk
-sqlalchemy
-statsmodels
+# sqlalchemy
+# statsmodels
 streamlit
-xgboost
