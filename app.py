@@ -443,7 +443,7 @@ Data is saved to a [GitHub repo](https://github.com/ltirrell/allday) ([data coll
 The script is currently manually ran at least once per week (to get new data for each NFL week).
 
 The [XGBoost Python Package](https://xgboost.readthedocs.io/en/stable/python/index.html) was used to determine feature importance using [this notebook](https://github.com/ltirrell/allday/blob/main/xgboost.ipynb).
-Overall, the model explains about 0.692 percent of variance in the data (based on r^2 score); this isn't very accurate for prediction but is sufficient for determining which features most effect NFT Price.
+Overall, the model explains about 69.2 percent of variance in the data (based on r^2 score); this isn't very accurate for prediction but is sufficient for determining which features most effect NFT Price.
 
 As mentioned above, stats information were obtained from [`nfl_data_py`](https://github.com/cooperdff/nfl_data_py).
 See [here](https://github.com/nflverse/nflreadr/blob/bf1dc066c18b67823b9293d8edf252e3a58c3208/data-raw/dictionary_playerstats.csv) for a description of most metrics.
