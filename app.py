@@ -24,9 +24,20 @@ st.write(
     f"""
 Is there a type of play that is more valuable, or do valuable players sell at higher prices regardless of play type?
 
-We'll break this down based on the date range of sales data. Choose either:
+We'll break this down based on the date range of sales data. Choose a Date Range:
 - All dates
-- Since the start of the 2022 preseason (Au)
+- Since the start of the 2022 preseason (2022-Aug-04)
+- Since the start of Week 1 of the 2022 season (2022-Sep-08)
+- Since the start of Week 2 of the 2022 season (2022-Sep-15)
+
+as well as a Moment Tier, the rarity level of the Moment NFT (in order of increasing rariry):
+- Common
+- Rare
+- Legendary 
+- Ultimate
+- All tiers (showing all sales regardless of tier).
+
+**Note** that there have only been 2 sales of Ultimate NFTs, so we will not focus analysis on these.
 """
 )
 
