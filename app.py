@@ -1,12 +1,9 @@
 from urllib.request import urlopen
-from io import BytesIO
-from pathlib import Path
 
 import altair as alt
-import pandas as pd
 import streamlit as st
-from scipy.stats import ttest_ind
 from PIL import Image
+from scipy.stats import ttest_ind
 
 from utils import *
 
@@ -167,8 +164,8 @@ image = Image.open("images/gain_importance.png")
 baseheight = 700
 hpercent = baseheight / float(image.size[1])
 wsize = int((float(image.size[0]) * float(hpercent)))
-image = image.resize((wsize, baseheight), Image.ANTIALIAS)
-# image.thumbnail((200,200), Image.ANTIALIAS)
+image = image.resize((wsize, baseheight), Image.Resampling.LANCZOS)
+
 c1.image(
     image,
     use_column_width="auto",
@@ -178,8 +175,8 @@ image = Image.open("images/mean_shap.png")
 baseheight = 700
 hpercent = baseheight / float(image.size[1])
 wsize = int((float(image.size[0]) * float(hpercent)))
-image = image.resize((wsize, baseheight), Image.ANTIALIAS)
-# image.thumbnail((200,200), Image.ANTIALIAS)
+image = image.resize((wsize, baseheight), Image.Resampling.LANCZOS)
+
 c2.image(image, use_column_width="auto", caption="Figure 2: Mean absolute SHAP values")
 c3.write(
     f"""
@@ -228,7 +225,9 @@ Use the slider to select how many players to view.
 
 Top Players will show up in large circles in the chart below, and their NFT sales are compared with other players in the same timeframe.
 Explore all the different possible combinations!
-**Generally, the top players have increased sales and average price compared to the rest of the league.
+**Generally, the top players have increased sales and average price compared to the rest of the league**.
+
+`Ctrl-Click`ing a circle will open the video of the first Moment sold for that player on that day.
 """
 )
 c1, c2, c3, c4, c5 = st.columns(5)
@@ -303,6 +302,12 @@ grouped = (
     .Price.agg(agg_metric)
     .reset_index()
 )
+video_url = (
+    df.groupby(["Date", "Player", "Position", "Team"])
+    .NFLALLDAY_ASSETS_URL.first()
+    .reset_index()
+)
+grouped = grouped.merge(video_url, on=["Date", "Player", "Position", "Team"])
 grouped["Date"] = grouped.Date.dt.tz_localize("US/Pacific")
 players = top_players["player_display_name"].values
 grouped["Top_Player"] = grouped.Player.apply(lambda x: True if x in players else False)
@@ -363,6 +368,7 @@ chart = (
                 "Price", title=ytitle, format=",.2f" if ytitle != "Sales Count" else ","
             ),
         ],
+        href="NFLALLDAY_ASSETS_URL",
     )
     .transform_calculate(
         # Generate Gaussian jitter with a Box-Muller transform
@@ -410,8 +416,7 @@ for i in list(range(num_players))[:5]:
     basewidth = 200
     wpercent = basewidth / float(image.size[0])
     hsize = int((float(image.size[1]) * float(wpercent)))
-    image = image.resize((basewidth, hsize), Image.ANTIALIAS)
-    # image.thumbnail((200,200), Image.ANTIALIAS)
+    image = image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
     cols[i].image(
         image,
         use_column_width="auto",
@@ -433,12 +438,14 @@ st.header("Methods")
 with st.expander("Method details and data sources"):
     st.write(
         f"""
-Some examples of interactions between features are shown below, described in clockwise from the top left:
-1. If an NFT has the feature `Player_Other` (red), our model would predict its price is lower for higher Rarity levels.
-2. The opposite effect is seen for `Position_QB`: for higher rarities, a QB NFT would be predicted to be hgiher.
-3. While more mixed, the the previous 2 charts, NFTs for `Position_Other` have higher prices at Rarity 1 (Rare), but lower prices at Rarity 2 (Legendary)
-4. `Play_Type_Interception` is similar to `Player_Other`: NFTs of this type are lower than those not of inteceptions at igher Rarity values.
-5. If an NFT is `Player_Other` (not a top-35 player by importance) and is a QB, its price is predicted to be lower.
-6. For `Play_Type Rush`, if a player is not `Position_Other` (so either QB, RB or Team), an NFT would be predicted to have lower value if the NFT shows a Rushing play.
+Data was queried using the [Flipside ShroomDK](https://sdk.flipsidecrypto.xyz/shroomdk) using [this query template](https://github.com/ltirrell/allday/blob/main/sql/sdk_allday.sql), acquiring all the sales data and metadata from the Flow tables.
+Data is saved to a [GitHub repo](https://github.com/ltirrell/allday) ([data collection script](https://github.com/ltirrell/allday/blob/main/gather_data.py), [data directory](https://github.com/ltirrell/allday/blob/main/data)).
+The script is currently manually ran at least once per week (to get new data for each NFL week).
+
+The [XGBoost Python Package](https://xgboost.readthedocs.io/en/stable/python/index.html) was used to determine feature importance using [this notebook](https://github.com/ltirrell/allday/blob/main/xgboost.ipynb).
+Overall, the model explains about 0.692 percent of variance in the data (based on r^2 score); this isn't very accurate for prediction but is sufficient for determining which features most effect NFT Price.
+
+As mentioned above, stats information were obtained from [`nfl_data_py`](https://github.com/cooperdff/nfl_data_py).
+See [here](https://github.com/nflverse/nflreadr/blob/bf1dc066c18b67823b9293d8edf252e3a58c3208/data-raw/dictionary_playerstats.csv) for a description of most metrics.
 """
     )
