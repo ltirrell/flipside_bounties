@@ -6,6 +6,7 @@ __all__ = [
     "n_players",
     "load_allday_data",
     "load_stats_data",
+    "convert_df",
     "get_subset",
     "alt_mean_price",
 ]
@@ -43,6 +44,11 @@ def load_stats_data():
     weekly_df["team"] = weekly_df["recent_team"]
 
     return weekly_df, season_df, roster_df, team_df
+
+@st.cache(ttl=3600 * 24)
+def convert_df(df):
+   """From: https://docs.streamlit.io/knowledge-base/using-streamlit/how-download-pandas-dataframe-csv"""
+   return df.to_csv().encode('utf-8')
 
 
 def get_subset(df, col, val, n=n_players):

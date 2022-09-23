@@ -313,7 +313,8 @@ players = top_players[["player_display_name", "position"]]
 grouped["Top_Player"] = grouped.apply(
     lambda x: True
     if x.Player in top_players.player_display_name.values
-    and x.Position in top_players.position.values #HACK gets rid of the LB named Josh Allen
+    and x.Position
+    in top_players.position.values  # HACK gets rid of the LB named Josh Allen
     else False,
     axis=1,
 )
@@ -439,6 +440,15 @@ with st.expander("Full Stats Infomation"):
         "All stats information, obtained from [`nfl_data_py`](https://github.com/cooperdff/nfl_data_py). Uses the Date Range and Player Position from above. See [here](https://github.com/nflverse/nflreadr/blob/bf1dc066c18b67823b9293d8edf252e3a58c3208/data-raw/dictionary_playerstats.csv) for a description of most metrics."
     )
     st.write(stats_df)
+    csv = convert_df(stats_df)
+
+    st.download_button(
+        "Press to Download",
+        csv,
+        f"nfl_stats_{date_range.replace(' ', '')}_Position-{position}.csv",
+        "text/csv",
+        key="download-csv",
+    )
 
 st.header("Methods")
 with st.expander("Method details and data sources"):
