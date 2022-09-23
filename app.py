@@ -218,6 +218,19 @@ st.image(
 )
 
 st.header("Purchasing based on recent performance")
+st.write(
+    f"""
+Last we'll look at whether recent higher performing players have increased number of sales, or higher median or mean price.
+We'll use NFL stats for the players from a specific date range (the entire 2022 season, or from a specific week), and sort players by a given metric.
+Fantasy Points is used by default; while this isn't the best metric of a player, those who score high generally had big games.
+Players of all positions can be used, or you can select one of the available positions.
+Use the slider to select how many players to view.
+
+Top Players will show up in large circles in the chart below, and their NFT sales are compared with other players in the same timeframe.
+Explore all the different possible combinations!
+**Generally, the top players have increased sales and average price compared to the rest of the league.
+"""
+)
 c1, c2, c3, c4, c5 = st.columns(5)
 date_range = c1.radio(
     "Date range:",
@@ -361,16 +374,33 @@ chart = (
     .properties(height=600, width=100)
 )
 
-pval = ttest_ind(top_price.Price.values, others.Price.values, equal_var=False).pvalue
 c1.write(player_display)
-c1.metric(
-    f"{ytitle}, Top Players (for selected positions)",
-    f"{top_price.Price.agg(agg_metric):,.2f}",
-)
-c1.metric(
-    f"{ytitle}, Other Players (for selected positions)",
-    f"{others.Price.agg(agg_metric):,.2f}",
-)
+if agg_metric != "count":
+    pval = ttest_ind(
+        top_price.Price.values, others.Price.values, equal_var=False
+    ).pvalue
+    c1.metric(
+        f"{ytitle}, Top Players (for selected positions)",
+        f"{top_price.Price.agg(agg_metric):,.2f}",
+    )
+    c1.metric(
+        f"{ytitle}, Other Players (for selected positions)",
+        f"{others.Price.agg(agg_metric):,.2f}",
+    )
+else:
+    top_count = top_price.groupby("Player").Price.count()
+    others_count = others.groupby("Player").Price.count()
+    c1.metric(
+        f"Average Sales Count, Top Players (for selected positions)",
+        f"{top_count.mean():,.2f}",
+    )
+    c1.metric(
+        f"Average Sales Count, Other Players (for selected positions)",
+        f"{others_count.mean():,.2f}",
+    )
+    pval = ttest_ind(top_count.values, others_count.values, equal_var=False).pvalue
+
+
 c1.metric("Significant Difference?", f"{pval:.3f}", "+ Yes" if pval < 0.05 else "- No")
 c2.altair_chart(chart)
 
@@ -402,7 +432,7 @@ with st.expander("Full Stats Infomation"):
 st.header("Methods")
 with st.expander("Method details and data sources"):
     st.write(
-    f"""
+        f"""
 Some examples of interactions between features are shown below, described in clockwise from the top left:
 1. If an NFT has the feature `Player_Other` (red), our model would predict its price is lower for higher Rarity levels.
 2. The opposite effect is seen for `Position_QB`: for higher rarities, a QB NFT would be predicted to be hgiher.
@@ -411,4 +441,4 @@ Some examples of interactions between features are shown below, described in clo
 5. If an NFT is `Player_Other` (not a top-35 player by importance) and is a QB, its price is predicted to be lower.
 6. For `Play_Type Rush`, if a player is not `Position_Other` (so either QB, RB or Team), an NFT would be predicted to have lower value if the NFT shows a Rushing play.
 """
-)
+    )
