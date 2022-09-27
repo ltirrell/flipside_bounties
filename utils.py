@@ -12,13 +12,12 @@ __all__ = [
     "convert_df",
     "get_subset",
     "alt_mean_price",
-    "combine_td_columns",
 ]
 
 n_players = 40
 
 
-@st.cache(ttl=180)
+@st.cache(ttl=3600 * 24)
 def load_allday_data():
     df = pd.read_csv("data/current_allday_data.csv.gz")
     datecols = ["Datetime", "Date"]
@@ -103,30 +102,3 @@ def alt_mean_price(
         .properties(height=600)
     )
     return chart
-
-@st.cache(ttl=3600 * 24)
-def combine_td_columns(df):
-    df["scored_td_in_game"] = df.apply(scored_td_in_game, axis=1)
-    df["scored_td_in_moment"] = df.apply(scored_td_in_moment, axis=1)
-    return df
-
-def scored_td_in_game(row):
-    if row.description_td is True:
-        if row.game_td is False:
-            return False
-        else:
-            return True
-    if row.description_td is False:
-        if row.game_td is True:
-            return True
-        else:
-            return False
-
-def scored_td_in_moment(row):
-    if row.description_td is True:
-        if row.game_td is False:
-            return False
-        else:
-            return True
-    else:
-        return False
