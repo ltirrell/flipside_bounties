@@ -1,3 +1,4 @@
+
 from urllib.request import urlopen
 
 import altair as alt
@@ -233,7 +234,7 @@ Explore all the different possible combinations!
 c1, c2, c3, c4, c5 = st.columns(5)
 date_range = c1.radio(
     "Date range:",
-    ["2022 Full Season", "2022 Week 1", "2022 Week 2"],
+    ["2022 Full Season", "2022 Week 1", "2022 Week 2", "2022 Week 3"],
     key="radio_stats",
 )
 position = c2.selectbox("Player Position", ["All", "QB", "RB", "WR", "TE"])
@@ -259,13 +260,15 @@ agg_metric = c5.radio(
     key="radio_stats2",
 )
 
-weekly_df, season_df, roster_df, team_df = load_stats_data()
+weekly_df_2022, season_df_2022, roster_df_2022, team_df = load_stats_data(years=2022)
 if date_range == "2022 Full Season":
-    stats_df = season_df
+    stats_df = season_df_2022
 elif date_range == "2022 Week 1":
-    stats_df = weekly_df[weekly_df.week == 1]
+    stats_df = weekly_df_2022[weekly_df_2022.week == 1]
 elif date_range == "2022 Week 2":
-    stats_df = weekly_df[weekly_df.week == 2]
+    stats_df = weekly_df_2022[weekly_df_2022.week == 2]
+elif date_range == "2022 Week 3":
+    stats_df = weekly_df_2022[weekly_df_2022.week == 3]
 
 if position == "All":
     stats_df = stats_df.sort_values(by=metric, ascending=False).reset_index(drop=True)
@@ -282,7 +285,13 @@ elif date_range == "2022 Week 1":
         (main_data.Date >= "2022-09-08") & (main_data.Date < "2022-09-15")
     ]
 elif date_range == "2022 Week 2":
-    df = main_data.copy()[main_data.Date >= "2022-09-15"]
+    df = main_data.copy()[
+        (main_data.Date >= "2022-09-15") & (main_data.Date < "2022-09-22")
+    ]
+elif date_range == "2022 Week 3":
+    df = main_data.copy()[
+        (main_data.Date >= "2022-09-22") & (main_data.Date < "2022-09-29")
+    ]
 
 top_players = stats_df.iloc[:num_players]
 player_display = top_players[
@@ -449,6 +458,39 @@ with st.expander("Full Stats Infomation"):
         "text/csv",
         key="download-csv",
     )
+
+
+st.header("Score for more?")
+score_data = main_data[
+    main_data.Play_Type.isin(
+        [
+            "Pass",
+            "Reception",
+            "Rush",
+            "Strip Sack",
+            "Interception",
+            "Fumble Recovery", # ~50% TD
+            "Blocked Kick", # 1/4 not td
+            "Punt Return", # all TD
+            "Kick Return", # 1/6 not td
+        ]
+    )
+].reset_index(drop=True)
+
+# score_data = combine_td_columns(score_data)
+
+score_data['Week']=score_data.Week.astype(str)
+score_data['NFL_ID']=score_data.NFL_ID.astype(str)
+
+# weekly_df, season_df, roster_df, team_df = load_stats_data()
+st.write(score_data.sample(50))
+st.write(len(score_data), len(main_data))
+st.write('----')
+
+no_pbp = score_data[score_data.pbp_td.isna()]
+st.write(len(no_pbp), len(no_pbp[no_pbp.Season >=1999]))
+
+st.write(score_data.Season.unique())
 
 st.header("Methods")
 with st.expander("Method details and data sources"):

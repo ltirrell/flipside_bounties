@@ -1,4 +1,7 @@
+from functools import partial
+
 import altair as alt
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -9,12 +12,13 @@ __all__ = [
     "convert_df",
     "get_subset",
     "alt_mean_price",
+    "combine_td_columns",
 ]
 
 n_players = 40
 
 
-@st.cache(ttl=3600 * 24)
+@st.cache(ttl=180)
 def load_allday_data():
     df = pd.read_csv("data/current_allday_data.csv.gz")
     datecols = ["Datetime", "Date"]
@@ -23,32 +27,42 @@ def load_allday_data():
 
 
 @st.cache(ttl=3600 * 24)
-def load_stats_data():
+def load_stats_data(years=None):
     weekly_df = pd.read_csv("data/weekly_data.csv")
     season_df = pd.read_csv("data/season_data.csv")
     roster_df = pd.read_csv("data/roster_data.csv")
     team_df = pd.read_csv("data/team_desc.csv")
     season_df = season_df.merge(
         roster_df[
-            [
-                "player_id",
-                "player_name",
-                "position",
-                "team",
-                "headshot_url",
-            ]
+            ["player_id", "player_name", "position", "team", "headshot_url", "season"]
         ],
-        on="player_id",
+        on=["player_id", "season"],
     ).rename(columns={"player_name": "player_display_name"})
 
     weekly_df["team"] = weekly_df["recent_team"]
 
-    return weekly_df, season_df, roster_df, team_df
+    if years is None:
+        return weekly_df, season_df, roster_df, team_df
+    elif type(years) == int:
+        return (
+            weekly_df[weekly_df.season == years],
+            season_df[season_df.season == years],
+            roster_df[roster_df.season == years],
+            team_df,
+        )
+    else:
+        return (
+            weekly_df[weekly_df.season.isin(years)],
+            season_df[season_df.season.isin(years)],
+            roster_df[roster_df.season.isin(years)],
+            team_df,
+        )
+
 
 @st.cache(ttl=3600 * 24)
 def convert_df(df):
-   """From: https://docs.streamlit.io/knowledge-base/using-streamlit/how-download-pandas-dataframe-csv"""
-   return df.to_csv().encode('utf-8')
+    """From: https://docs.streamlit.io/knowledge-base/using-streamlit/how-download-pandas-dataframe-csv"""
+    return df.to_csv().encode("utf-8")
 
 
 def get_subset(df, col, val, n=n_players):
@@ -89,3 +103,30 @@ def alt_mean_price(
         .properties(height=600)
     )
     return chart
+
+@st.cache(ttl=3600 * 24)
+def combine_td_columns(df):
+    df["scored_td_in_game"] = df.apply(scored_td_in_game, axis=1)
+    df["scored_td_in_moment"] = df.apply(scored_td_in_moment, axis=1)
+    return df
+
+def scored_td_in_game(row):
+    if row.description_td is True:
+        if row.game_td is False:
+            return False
+        else:
+            return True
+    if row.description_td is False:
+        if row.game_td is True:
+            return True
+        else:
+            return False
+
+def scored_td_in_moment(row):
+    if row.description_td is True:
+        if row.game_td is False:
+            return False
+        else:
+            return True
+    else:
+        return False
