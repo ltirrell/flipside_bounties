@@ -18,8 +18,11 @@ n_players = 40
 
 
 @st.cache(ttl=3600 * 24, allow_output_mutation=True)
-def load_allday_data():
-    df = pd.read_csv("data/current_allday_data.csv.gz")
+def load_allday_data(cols=None):
+    if cols is not None:
+        df = pd.read_csv("data/current_allday_data.csv.gz", usecols=cols)
+    else:
+        df = pd.read_csv("data/current_allday_data.csv.gz")
     datecols = ["Datetime", "Date"]
     df[datecols] = df[datecols].apply(pd.to_datetime)
     return df

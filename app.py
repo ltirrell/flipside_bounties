@@ -60,8 +60,35 @@ The [XGBoost Python Package](https://xgboost.readthedocs.io/en/stable/python/ind
 Overall, the model explains about 69.2 percent of variance in the data (based on r^2 score); this isn't very accurate for prediction but is sufficient for determining which features most effect NFT Price.
 """
     )
-
-main_data = load_allday_data()
+cols_to_keep = [
+    "Date",
+    "Datetime",
+    'marketplace_id',
+    "Player",
+    "Team",
+    "Position",
+    # "Position Group",
+    "Play_Type",
+    "Season",
+    "Week",
+    "Moment_Date",
+    "Game Outcome",
+    "won_game",
+    # "Scored Touchdown?",
+    "Moment_Tier",
+    "Rarity",
+    "Moment_Description",
+    "NFLALLDAY_ASSETS_URL",
+    "Total_Circulation",
+    "Price",
+    "tx_id",
+    "scored_td_in_moment",
+    "pbp_td",
+    "description_td",
+    "scored_td_in_game",
+    "game_td",
+]
+main_data = load_allday_data(cols_to_keep)
 
 st.header("Two minute Drill: What drives Moment price?")
 st.write(
@@ -126,9 +153,7 @@ position_type_dict = {
     "By Rarity": ("Moment_Tier", rarities),
 }
 
-score_data = main_data[main_data.Play_Type.isin(score_columns)].reset_index(
-    drop=True
-)
+score_data = main_data[main_data.Play_Type.isin(score_columns)].reset_index(drop=True)
 score_data = score_data.rename(columns=td_mapping)
 
 c1, c2, c3, c4, c5, c6 = st.columns(6)
@@ -467,7 +492,9 @@ if st.checkbox("Load Section", key="load_performance"):
         key="radio_stats2",
     )
 
-    weekly_df_2022, season_df_2022, roster_df_2022, team_df = load_stats_data(years=2022)
+    weekly_df_2022, season_df_2022, roster_df_2022, team_df = load_stats_data(
+        years=2022
+    )
     if date_range == "2022 Full Season":
         stats_df = season_df_2022
     elif date_range == "2022 Week 1":
@@ -478,7 +505,9 @@ if st.checkbox("Load Section", key="load_performance"):
         stats_df = weekly_df_2022[weekly_df_2022.week == 3]
 
     if position == "All":
-        stats_df = stats_df.sort_values(by=metric, ascending=False).reset_index(drop=True)
+        stats_df = stats_df.sort_values(by=metric, ascending=False).reset_index(
+            drop=True
+        )
     else:
         stats_df = (
             stats_df[stats_df["position"] == position]
@@ -511,7 +540,6 @@ if st.checkbox("Load Section", key="load_performance"):
             metric: metric.replace("_", " ").title(),
         }
     )
-
 
     grouped = (
         df.groupby(["Date", "Player", "Position", "Team"])
@@ -561,7 +589,9 @@ if st.checkbox("Load Section", key="load_performance"):
                 scale=alt.Scale(),
             ),
             y=alt.Y(
-                "Price", title=ytitle, scale=alt.Scale(type="log", zero=False, nice=False)
+                "Price",
+                title=ytitle,
+                scale=alt.Scale(type="log", zero=False, nice=False),
             ),
             color=alt.Color("Position"),
             column=alt.Column(
@@ -588,7 +618,9 @@ if st.checkbox("Load Section", key="load_performance"):
                     "Team",
                 ),
                 alt.Tooltip(
-                    "Price", title=ytitle, format=",.2f" if ytitle != "Sales Count" else ","
+                    "Price",
+                    title=ytitle,
+                    format=",.2f" if ytitle != "Sales Count" else ",",
                 ),
             ],
             href="NFLALLDAY_ASSETS_URL",
@@ -629,13 +661,14 @@ if st.checkbox("Load Section", key="load_performance"):
         )
         pval = ttest_ind(top_count.values, others_count.values, equal_var=False).pvalue
 
-
-    c1.metric("Significant Difference?", f"{pval:.3f}", "+ Yes" if pval < 0.05 else "- No")
+    c1.metric(
+        "Significant Difference?", f"{pval:.3f}", "+ Yes" if pval < 0.05 else "- No"
+    )
     c2.altair_chart(chart)
 
     cols = st.columns(5)
     for i in list(range(num_players))[:5]:
-        try: # don't want to error out if the image doesnt load
+        try:  # don't want to error out if the image doesnt load
             image = Image.open(urlopen(stats_df.iloc[i]["headshot_url"]))
             basewidth = 200
             wpercent = basewidth / float(image.size[0])
@@ -652,8 +685,6 @@ if st.checkbox("Load Section", key="load_performance"):
             player_display.iloc[i][metric.replace("_", " ").title()],
             metric.replace("_", " ").title(),
         )
-
-
 
     with st.expander("Full Stats Infomation"):
         st.write(
@@ -742,7 +773,6 @@ if st.checkbox("Load Section", key="load_play"):
         .iloc[:n_players]
     )
 
-
     tier = st.selectbox(
         "Choose the Moment Tier (the rarity level of the Moment NFT)",
         ["All Tiers", "COMMON", "RARE", "LEGENDARY", "ULTIMATE"],
@@ -756,15 +786,18 @@ if st.checkbox("Load Section", key="load_play"):
             play_type_price_data, "Play_Type", y_title=None, y_labels=False
         )
     else:
-        play_type_tier_subset = get_subset(play_type_tier_price_data, "Moment_Tier", tier)
+        play_type_tier_subset = get_subset(
+            play_type_tier_price_data, "Moment_Tier", tier
+        )
         player_tier_subset = get_subset(player_tier_price_data, "Moment_Tier", tier)
         player_chart = alt_mean_price(player_tier_subset, "Player")
         play_type_chart = alt_mean_price(
             play_type_tier_subset, "Play_Type", y_title=None, y_labels=False
         )
 
-
-    chart = alt.hconcat(player_chart, play_type_chart, spacing=10).resolve_scale(y="shared")
+    chart = alt.hconcat(player_chart, play_type_chart, spacing=10).resolve_scale(
+        y="shared"
+    )
     st.altair_chart(chart, use_container_width=True)
 
     with st.expander("Summary"):
@@ -832,7 +865,9 @@ if st.checkbox("Load Section", key="load_play"):
         image = image.resize((wsize, baseheight), Image.Resampling.LANCZOS)
 
         c2.image(
-            image, use_column_width="auto", caption="Figure 2: Mean absolute SHAP values"
+            image,
+            use_column_width="auto",
+            caption="Figure 2: Mean absolute SHAP values",
         )
         c3.write(
             f"""
