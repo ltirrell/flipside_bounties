@@ -30,34 +30,72 @@ def load_allday_data(cols=None):
 
 @st.cache(ttl=3600 * 24, allow_output_mutation=True)
 def load_stats_data(years=None):
+    # NOTE: now returning less data
+
     weekly_df = pd.read_csv("data/weekly_data.csv")
     season_df = pd.read_csv("data/season_data.csv")
     roster_df = pd.read_csv("data/roster_data.csv")
-    team_df = pd.read_csv("data/team_desc.csv")
+    # team_df = pd.read_csv("data/team_desc.csv")
     season_df = season_df.merge(
         roster_df[
             ["player_id", "player_name", "position", "team", "headshot_url", "season"]
         ],
         on=["player_id", "season"],
     ).rename(columns={"player_name": "player_display_name"})
+    season_df = season_df[
+        [
+            "player_id",
+            "player_display_name",
+            "position",
+            "team",
+            "headshot_url",
+            "season",
+            # "week",
+            "fantasy_points_ppr",
+            "passing_tds",
+            "passing_yards",
+            "receiving_tds",
+            "receiving_yards",
+            "rushing_tds",
+            "rushing_yards",
+        ]
+    ]
 
     weekly_df["team"] = weekly_df["recent_team"]
+    weekly_df = weekly_df[
+        [
+            "player_id",
+            "player_display_name",
+            "position",
+            "team",
+            "headshot_url",
+            "season",
+            "week",
+            "fantasy_points_ppr",
+            "passing_tds",
+            "passing_yards",
+            "receiving_tds",
+            "receiving_yards",
+            "rushing_tds",
+            "rushing_yards",
+        ]
+    ]
 
     if years is None:
-        return weekly_df, season_df, roster_df, team_df
+        return weekly_df, season_df  # , roster_df, team_df
     elif type(years) == int:
         return (
             weekly_df[weekly_df.season == years],
             season_df[season_df.season == years],
-            roster_df[roster_df.season == years],
-            team_df,
+            # roster_df[roster_df.season == years],
+            # team_df,
         )
     else:
         return (
             weekly_df[weekly_df.season.isin(years)],
             season_df[season_df.season.isin(years)],
-            roster_df[roster_df.season.isin(years)],
-            team_df,
+            # roster_df[roster_df.season.isin(years)],
+            # team_df,
         )
 
 

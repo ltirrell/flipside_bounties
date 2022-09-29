@@ -492,7 +492,7 @@ if st.checkbox("Load Section", key="load_performance"):
         key="radio_stats2",
     )
 
-    weekly_df_2022, season_df_2022, roster_df_2022, team_df = load_stats_data(
+    weekly_df_2022, season_df_2022 = load_stats_data(
         years=2022
     )
     if date_range == "2022 Full Season":
@@ -688,7 +688,7 @@ if st.checkbox("Load Section", key="load_performance"):
 
     with st.expander("Full Stats Infomation"):
         st.write(
-            "All stats information, obtained from [`nfl_data_py`](https://github.com/cooperdff/nfl_data_py). Uses the Date Range and Player Position from above. See [here](https://github.com/nflverse/nflreadr/blob/bf1dc066c18b67823b9293d8edf252e3a58c3208/data-raw/dictionary_playerstats.csv) for a description of most metrics."
+            "All of the above stats information, obtained from [`nfl_data_py`](https://github.com/cooperdff/nfl_data_py). Uses the Date Range and Player Position from above. See [here](https://github.com/nflverse/nflreadr/blob/bf1dc066c18b67823b9293d8edf252e3a58c3208/data-raw/dictionary_playerstats.csv) for a description of most metrics."
         )
         st.write(stats_df)
         csv = convert_df(stats_df)
