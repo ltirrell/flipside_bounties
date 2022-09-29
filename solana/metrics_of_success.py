@@ -268,7 +268,7 @@ for x in (
 
 st.header("Methods")
 """The Flipside Crypto ShroomDK was used to query hourly transaction information, with one query submitted per day.
-Some days did not return results (12/201), and were excluded.
+Some days did not return results (less than 10%), and were excluded.
 Future versions of this dashboard will improve the querying method, and also update the information on a regular basis.
 
 The [`flipside_bounties/solana/SDK_query_metrics_of_success.ipynb`](https://github.com/ltirrell/flipside_bounties/blob/main/solana/SDK_query_metrics_of_success.ipynb) contains code used for querying and gathering results.
