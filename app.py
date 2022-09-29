@@ -351,7 +351,7 @@ combined_chart = (
 st.altair_chart(combined_chart)
 st.write(
     f"""
-To statistically determine how price is related to these factors, we ran modeled the relationship between Price vs Play Type, Position of the Player, Rarity of the NFT, Game outcome (whether the NFT is for a winning team), and whether the NFT shows a TD score(see [Methods](#methods) for details). When looking at the entire dataset, the only factor which significantly affects price is **Rarity**.
+To statistically determine how price is related to these factors, we modeled the relationship between Price vs Play Type, Position of the Player, Rarity of the NFT, Game outcome (whether the NFT is for a winning team), and whether the NFT shows a TD score(see [Methods](#methods) for details). When looking at the entire dataset, the only factor which significantly affects price is **Rarity**.
 This is quite clear if viewing the `By Rarity Chart`; there is a clear separation of groups by the level.
 
 Other factors, such as TD scoring vs non TD scoring Moments, show some clear differences (see below), but these are not sufficient to fully explain the data and predict price.
