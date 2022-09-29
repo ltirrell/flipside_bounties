@@ -1,9 +1,8 @@
-from functools import partial
-
 import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
+from scipy.stats import ttest_ind
 
 __all__ = [
     "n_players",
@@ -12,6 +11,7 @@ __all__ = [
     "convert_df",
     "get_subset",
     "alt_mean_price",
+    "get_metrics",
 ]
 
 n_players = 40
@@ -102,3 +102,89 @@ def alt_mean_price(
         .properties(height=600)
     )
     return chart
+
+
+def get_metrics(
+    df,
+    cols,
+    metric,
+    positions,
+    short_form,
+    pos_column="Position",
+    agg_column="Price",
+    summary=False,
+):
+    ntests = 1000  # approximate, for play types * positions * metrics * dates
+    alpha = 0.05 / ntests  # Bonferroni correction for number tests
+    for i, x in enumerate(positions):
+        if x == "All":
+            pos_data = df
+        else:
+            pos_data = df[df[pos_column] == x]
+
+        if type(metric) == str:
+            pos_metric = pos_data[pos_data[metric] == True]
+            pos_no_metric = pos_data[pos_data[metric] == False]
+        else:
+            pos_metric = pos_data[pos_data[metric[0]] == True]
+            pos_no_metric = pos_data[pos_data[metric[1]] == False]
+
+        if summary:
+            cols.metric(
+                f"{short_form} Percentage: {x}", f"{len(pos_metric)/len(pos_data):.2%}"
+            )
+        else:
+            pos_metric_agg = pos_metric[agg_column].values
+            pos_no_metric_agg = pos_no_metric[agg_column].values
+
+            pval = ttest_ind(pos_metric_agg, pos_no_metric_agg, equal_var=False).pvalue
+            metric_mean = pos_metric_agg.mean()
+            no_metric_mean = pos_no_metric_agg.mean()
+
+            comp = (
+                f"${metric_mean:,.2f} vs ${no_metric_mean:,.2f}"
+                if agg_column == "Price"
+                else f"{metric_mean:,.2f} vs {no_metric_mean:,.2f}"
+            )
+
+            if pd.isna(pval):
+                sig = ""
+                if pd.isna(metric_mean) and pd.isna(no_metric_mean):
+                    comp = ""
+                elif pd.isna(metric_mean):
+                    comp = (
+                        f"No {short_form}: ${no_metric_mean:,.2f}"
+                        if agg_column == "Price"
+                        else f"No {short_form}: {no_metric_mean:,.2f}"
+                    )
+                elif pd.isna(no_metric_mean):
+                    comp = (
+                        f"{short_form}: ${metric_mean:,.2f}"
+                        if agg_column == "Price"
+                        else f"{short_form}: {metric_mean:,.2f}"
+                    )
+            elif pval < alpha:
+                if metric_mean > no_metric_mean:
+                    sig = f"+ {short_form} HIGHER 📈"
+                else:
+                    sig = f"- {short_form} LOWER 📉"
+            else:
+                # sig = "- No Significant Difference"
+                sig = ""
+
+            if type(metric) != str:
+                if len(pos_no_metric) == 0:
+                    percentage = f"(No {short_form})"
+                else:
+                    percentage = f"({len(pos_metric)/len(pos_no_metric):,.2f} BG: Desc)"
+            else:
+                if len(pos_data) == 0:
+                    percentage = f"(No {short_form})"
+                else:
+                    percentage = f"({len(pos_metric)/len(pos_data):.2%} {short_form})"
+
+            cols[i % len(cols)].metric(
+                f"Position: {x} {percentage}",
+                comp,
+                sig,
+            )

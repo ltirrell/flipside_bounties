@@ -46,6 +46,7 @@ WITH updated_metadata AS (
         series AS "Series",
         set_name AS "Set_Name",
         moment_stats_full ['id'] as "unique_id",
+        moment_stats_full ['flowID'] as "marketplace_id",
         -- video_urls as "Video_URLs",
         CONCAT(
             'https://assets.nflallday.com/editions/',

@@ -1,6 +1,7 @@
 from urllib.request import urlopen
 
 import altair as alt
+import pandas as pd
 import streamlit as st
 from PIL import Image
 from scipy.stats import ttest_ind
@@ -23,46 +24,398 @@ with st.expander("Method details and data sources"):
 Data was queried using the [Flipside ShroomDK](https://sdk.flipsidecrypto.xyz/shroomdk) using [this query template](https://github.com/ltirrell/allday/blob/main/sql/sdk_allday.sql), acquiring all the sales data and metadata from the Flow tables.
 Data is saved to a [GitHub repo](https://github.com/ltirrell/allday) ([data collection script](https://github.com/ltirrell/allday/blob/main/gather_data.py), [data directory](https://github.com/ltirrell/allday/blob/main/data)).
 The script is currently manually ran at least once per week (to get new data for each NFL week).
+Note that there may be some difference between this data (such as average sales price/number of sales) and what is listed at the NFL All Day Marketplace.
+
+NFL stats information was obtained from [`nfl_data_py`](https://github.com/cooperdff/nfl_data_py).
+See [here](https://github.com/nflverse/nflreadr/blob/bf1dc066c18b67823b9293d8edf252e3a58c3208/data-raw/dictionary_playerstats.csv) for a description of most metrics.
+Season and play-by-play data, available since 1999, was used for determining whether of a player or play resulted in a score.
+
+To determine whether a Moment NFT contains a video of a Touchdown score, the following information was used:
+- **Description only (Moment TD)**: The Moment Description in the Flipside Data contains either of both of the case-insensitive words "TD" or "touchdown". This results in many false classifications, but is a good starting point without watching each video to determine the TD status.
+- **Conservative (Moment TD)**: Play-by-play data was used to determine if the play in the Moment resulted in a TD. This is possible as the Quarter, clock time, and game information (season, week and teams) are available in the NFT metadata, and can be watch with what occurred at that game time. A few times (~15) did not match up, and these videos were watched to determine their TD status. All plays from seasons before 1999 would have a NaN/Null value for this determination, as play-by-play data is not available.
+- **Conservative (In-game TD)**: Using NFT data regarding the player and the game, the seasonal NFL stats are checked to determine whether a player scored in that game. All plays from seasons before 1999 would have a NaN/Null value for this determination, as season data is not available.
+- **Best Guess (Moment TD)**: This is the the same as **Conservative (Moment TD)** if it is not NaN, or else will match the **Description only (Moment TD)**. However, if **Conservative (In-game TD)** is False (meaning the seasonal stats data says the player didn't score that game), then this value will be False.
+- **Best Guess: (In-game TD)**: This is the same as **Conservative (In-game TD)** if it is not NaN, or else will match the **Description only (Moment TD)**.
+
+Game outcome was obtained using information from the NFT metadata-- the Home and Away team scores are available.
+This is used to determine if the player's team won the game, or it resulted in a tie.
+
+A [Bonferroni-corrected](https://en.wikipedia.org/wiki/Bonferroni_correction) [2-sided Welch's t-test](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ttest_ind.html) was used to determine whether TD scoring Moments had more sales or a higher price than those not scoring TDs.
+The same was done for game winners/losers additionally.
+
+A [Linear Mixed Effects Model](https://www.statsmodels.org/dev/examples/notebooks/generated/mixed_lm_example.html#) was used to determine which variables are predictive of a Moment's price, using the following model:
+```
+Price ~ Q("Scored Touchdown?") + Q("Game outcome") + Play_Type + Position + Rarity + (1|marketplace_id)
+```
+where 
+- `Scored Touchdown` is whether the NFT contains a TD score based on the **Best Guess (Moment TD)** method
+- `Game outcome` is whether the team won or lost
+- `Play type` is one of the play types that could result in a TD (such as pass or rush)
+- `Position` is the player's position
+- `Rarity` is the Moment Tier, turned into a number from 0-3 (0 is COMMON, 3 is ULTIMATE)
+- `marketplace_id` is the random effect, used to group the sales information based on this value. For example, [marketplace_id 1015](https://nflallday.com/listing/moment/1015) would group all of the sales for all of the 60 different Stephon Diggs Moment NFT IDs. NFT ID wasn't used, as all of them are the same (i.e. there are no features of an NFT with the same marketplace_id which vary by NFT ID).
+Details can found in [this notebook](https://github.com/ltirrell/allday/blob/round3/what_drives_price.ipynb).
 
 The [XGBoost Python Package](https://xgboost.readthedocs.io/en/stable/python/index.html) was used to determine feature importance using [this notebook](https://github.com/ltirrell/allday/blob/main/xgboost.ipynb).
 Overall, the model explains about 69.2 percent of variance in the data (based on r^2 score); this isn't very accurate for prediction but is sufficient for determining which features most effect NFT Price.
-
-As mentioned above, stats information were obtained from [`nfl_data_py`](https://github.com/cooperdff/nfl_data_py).
-See [here](https://github.com/nflverse/nflreadr/blob/bf1dc066c18b67823b9293d8edf252e3a58c3208/data-raw/dictionary_playerstats.csv) for a description of most metrics.
 """
     )
 
 main_data = load_allday_data()
 
-st.header("Score for more?")
-score_data = main_data[
-    main_data.Play_Type.isin(
-        [
-            "Pass",
-            "Reception",
-            "Rush",
-            "Strip Sack",
-            "Interception",
-            "Fumble Recovery",  # ~50% TD
-            "Blocked Kick",  # 1/4 not td
-            "Punt Return",  # all TD
-            "Kick Return",  # 1/6 not td
-        ]
+st.header("Two minute Drill: What drives Moment price?")
+st.write(
+    f"""
+The chart below contains the whole 9 yards for investigating factors affecting price!
+Select the following:
+- Date Range: Sales data for All Time, since the current NFL season started, or specific weeks of this season
+- Play Types: we're mainly interested in whether a TD scored in the moment leads to a higher price, so choose a specific play type where scoring is possible, or look at all of them!
+- Method: Method used for determining whether the Moment encapsulates a TD score. See [Methods](#methods) for details.
+- Position Type: Divide results by Player's Positon, the Position Group, or Rarity level of the NFT
+- Game Metric: Color the points by whether the NFT contains a TD score, or whether the Player's team won the game. If Both are chosen, color is used for showing TD scoring and shape is used for showing game outcome.
+- Aggregation Metric: Plot the Average Sales Price of the NFT, or the Sales Count
+
+`Ctrl-Click` a point to open the the NFL All Day Marketplace page for an NFT in a new tab.
+*Note the log scale of the y-axis!*
+
+The sections below the chart show whether there is a price difference between TD scorers/non-scorers, and Game Winners/Losers.
+Explore for yourself to see the various differences!
+    """
+)
+
+score_columns = [
+    "Pass",
+    "Reception",
+    "Rush",
+    "Strip Sack",
+    "Interception",
+    "Fumble Recovery",  # ~50% TD
+    "Blocked Kick",  # 1/4 not td
+    "Punt Return",  # all TD
+    "Kick Return",  # 1/6 not td
+]
+td_mapping = {
+    "scored_td_in_moment": "Best Guess (Moment TD)",
+    "pbp_td": "Conservative (Moment TD)",
+    "description_td": "Description only (Moment TD)",
+    "scored_td_in_game": "Best Guess: (In-game TD)",
+    "game_td": "Conservative (In-game TD)",
+}
+
+all_pos = ["All"]
+offense = [
+    "QB",
+    "WR",
+    "RB",
+    "TE",
+    "OL",
+]
+defense = [
+    "DB",
+    "DL",
+    "LB",
+]
+team_pos = ["Team"]
+pos_groups = ["All", "Offense", "Defense", "Team"]
+positions = all_pos + offense + defense + team_pos
+rarities = ["COMMON", "RARE", "LEGENDARY", "ULTIMATE"]
+
+position_type_dict = {
+    "By Position": ("Position", positions),
+    "By Group": ("Position Group", pos_groups),
+    "By Rarity": ("Moment_Tier", rarities),
+}
+
+score_data = main_data.copy()[main_data.Play_Type.isin(score_columns)].reset_index(
+    drop=True
+)
+score_data = score_data.rename(columns=td_mapping)
+
+c1, c2, c3, c4, c5, c6 = st.columns(6)
+date_range = c1.selectbox(
+    "Date range:",
+    ["All Time", "2022 Full Season", "2022 Week 1", "2022 Week 2", "2022 Week 3"],
+    key="date_scores",
+)
+play_type = c2.selectbox(
+    "Play Types",
+    ["All"] + score_columns,
+    key="play_types_scores",
+)
+how_scores = c3.selectbox(
+    "Method",
+    td_mapping.values(),
+    key="how_scores",
+)
+position_type = c4.radio(
+    "Position Type",
+    position_type_dict.keys(),
+    key="position_type",
+)
+metric = c5.radio(
+    "Game Metric",
+    ["Touchdown", "Game Outcome", "Both"],
+    2,
+    key="metric_scores",
+)
+agg_metric = c6.radio(
+    "Aggregation Metric",
+    ["Average Sales Price ($)", "Sales Count"],
+    key="agg_metric_scores",
+)
+
+if date_range == "All Time":
+    df = score_data.copy()
+elif date_range == "2022 Full Season":
+    df = score_data.copy()[main_data.Date >= "2022-09-08"]
+elif date_range == "2022 Week 1":
+    df = score_data.copy()[
+        (score_data.Date >= "2022-09-08") & (score_data.Date < "2022-09-15")
+    ]
+elif date_range == "2022 Week 2":
+    df = score_data.copy()[
+        (score_data.Date >= "2022-09-15") & (score_data.Date < "2022-09-22")
+    ]
+elif date_range == "2022 Week 3":
+    df = score_data.copy()[
+        (score_data.Date >= "2022-09-22") & (score_data.Date < "2022-09-29")
+    ]
+
+
+df["Scored Touchdown?"] = df[how_scores]
+if play_type != "All":
+    df = df[df.Play_Type == play_type]
+
+
+def get_position_group(x):
+    if x in offense:
+        return "Offense"
+    if x in defense:
+        return "Defense"
+    if x in team_pos:
+        return "Team"
+
+
+df["Position Group"] = df.Position.apply(get_position_group)
+
+agg_dict = {
+    "Player": "first",
+    "Team": "first",
+    "Position": "first",
+    "Position Group": "first",
+    "Play_Type": "first",
+    "Season": "first",
+    "Week": "first",
+    "Moment_Date": "first",
+    "Game Outcome": "first",
+    "won_game": "first",
+    "Scored Touchdown?": "first",
+    "Moment_Tier": "first",
+    "Rarity": "first",
+    "Moment_Description": "first",
+    "NFLALLDAY_ASSETS_URL": "first",
+    "Total_Circulation": "first",
+    "Price": "mean",
+    "tx_id": "count",
+}
+grouped = df.groupby(["marketplace_id"]).agg(agg_dict).reset_index()
+grouped["Week"] = grouped.Week.astype(str)
+grouped["site"] = grouped.marketplace_id.apply(
+    lambda x: f"https://nflallday.com/listing/moment/{x}"
+)
+
+grouped_all = grouped.copy()
+grouped_all["Position"] = "All"
+grouped_all["Position Group"] = "All"
+grouped = pd.concat([grouped, grouped_all]).reset_index(drop=True)
+
+select = alt.selection_single(on="mouseover")
+base = alt.Chart(
+    grouped,
+)
+chart = (
+    base.mark_point(size=110, filled=True)
+    .encode(
+        x=alt.X(
+            "jitter:Q",
+            title=None,
+            axis=alt.Axis(values=[0], ticks=True, grid=False, labels=False),
+            scale=alt.Scale(),
+        ),
+        y=alt.Y(
+            "Price" if agg_metric == "Average Sales Price ($)" else "tx_id",
+            title=agg_metric,
+            scale=alt.Scale(
+                type="log",
+                zero=False,
+            ),
+        ),
+        color=alt.Color(
+            "Game Outcome" if metric == "Game Outcome" else "Scored Touchdown?",
+            scale=alt.Scale(
+                domain=["Win", "Loss", "Tie"]
+                if metric == "Game Outcome"
+                else [True, False, None],
+                range=["#1E88E5", "#D81B60", "#FFC107"],
+            ),
+        ),
+        shape=alt.value("circle")
+        if metric != "Both"
+        else alt.Shape(
+            "Game Outcome",
+            scale=alt.Scale(
+                domain=["Win", "Loss", "Tie"], range=["circle", "triangle", "diamond"]
+            ),
+        ),
+        opacity=alt.condition(select, alt.value(1), alt.value(0.3)),
+        tooltip=[
+            # alt.Tooltip("yearmonthdate(Date)", title="Date"),
+            alt.Tooltip("Player"),
+            alt.Tooltip("Position"),
+            alt.Tooltip("Team"),
+            alt.Tooltip("yearmonthdate(Moment_Date)", title="Game Date"),
+            alt.Tooltip("Moment_Tier", title="Rarity"),
+            alt.Tooltip("Total_Circulation", title="NFT Total Supply"),
+            # alt.Tooltip("Moment_Description", title="Description", band=1),
+            alt.Tooltip("Game Outcome"),
+            alt.Tooltip("Scored Touchdown?"),
+            alt.Tooltip("Price", title="Average Sales Price ($)", format=".2f"),
+            alt.Tooltip(
+                "tx_id",
+                title="Sales count",
+            ),
+        ],
+        href="site",
     )
-].reset_index(drop=True)
+    .transform_calculate(
+        # Generate Gaussian jitter with a Box-Muller transform
+        jitter="sqrt(-2*log(random()))*cos(2*PI*random())"
+    )
+    .interactive()
+    .properties(height=800, width=125)
+    .add_selection(select)
+)
 
-score_data["Week"] = score_data.Week.astype(str)
-score_data["NFL_ID"] = score_data.NFL_ID.astype(str)
+box = base.mark_boxplot(color="#004D40", outliers=False, size=25).encode(
+    y=alt.Y(
+        "Price" if agg_metric == "Average Sales Price ($)" else "tx_id",
+        title=agg_metric,
+    ),
+)
+combined_chart = (
+    alt.layer(box, chart)
+    .facet(
+        column=alt.Column(
+            position_type_dict[position_type][0],
+            title=None,
+            header=alt.Header(
+                labelAngle=-90,
+                titleOrient="top",
+                labelOrient="bottom",
+                labelAlign="right",
+                labelPadding=3,
+            ),
+            sort=position_type_dict[position_type][1],
+        ),
+        title=f"Play Types: {play_type}",
+    )
+    .configure_facet(spacing=0)
+)
 
-# weekly_df, season_df, roster_df, team_df = load_stats_data()
-st.write(score_data.sample(50))
-st.write(len(score_data), len(main_data))
-st.write("----")
+st.altair_chart(combined_chart)
+st.write(
+    f"""
+To statistically determine how price is related to these factors, we ran modeled the relationship between Price vs Play Type, Position of the Player, Rarity of the NFT, Game outcome (whether the NFT is for a winning team), and whether the NFT shows a TD score(see [Methods](#methods) for details). When looking at the entire dataset, the only factor which significantly affects price is **Rarity**.
+This is quite clear if viewing the `By Rarity Chart`; there is a clear separation of groups by the level.
 
-no_pbp = score_data[score_data.pbp_td.isna()]
-st.write(len(no_pbp), len(no_pbp[no_pbp.Season >= 1999]))
+Other factors, such as TD scoring vs non TD scoring Moments, show some clear differences (see below), but these are not sufficient to fully explain the data and predict price.
+    """
+)
+if position_type == "By Position":
+    pos_subset = [x for x in positions if x in ["All"] + df.Position.unique().tolist()]
+    pos_column = position_type_dict[position_type][0]
+else:
+    pos_subset = position_type_dict[position_type][1]
+    pos_column = position_type_dict[position_type][0]
 
-st.write(score_data.Season.unique())
+# TODO: summary metrics? though not very useful
+# cols = st.columns(5)
+# get_metrics(df, cols[0], "Scored Touchdown?", pos_subset, "TDs", pos_column, summary=True)
+# get_metrics(df, cols[1], "won_game", pos_subset, "Winners", pos_column, summary=True)
+
+ncols = len(pos_subset) if len(pos_subset) < 5 else 5
+
+st.subheader("Score for more?")
+st.write("**Are TD scores more sought after?**")
+st.write(
+    f"""
+The price of TD scoring vs non-TD scoring Moments for each Position/Position Group/Rarity Level is shown. Any signifcant differences are marked. The percentage of TD scoring moments is shown in parentheses.
+    """
+)
+cols = st.columns(ncols)
+get_metrics(
+    df if agg_metric == "Average Sales Price ($)" else grouped,
+    cols,
+    "Scored Touchdown?",
+    pos_subset,
+    "TDs",
+    pos_column,
+    agg_column="Price" if agg_metric == "Average Sales Price ($)" else "tx_id",
+)
+
+st.subheader("Winner's circle")
+st.write("**Are game winning players traded more?**")
+st.write(
+    f"""
+The price of Game Winners vs Game Losing Moments for each Position/Position Group/Rarity Level is shown. Any signifcant differences are marked. The percentage of Game Winners moments is shown in parentheses.
+    """
+)
+cols = st.columns(ncols)
+get_metrics(
+    df if agg_metric == "Average Sales Price ($)" else grouped,
+    cols,
+    "won_game",
+    pos_subset,
+    "Winners",
+    pos_column,
+    agg_column="Price" if agg_metric == "Average Sales Price ($)" else "tx_id",
+)
+
+st.subheader("Coach's challenge")
+st.write("**If TDs are defined differently, does that lead to different results?**")
+st.write(
+    f"""
+For reference, a comparison between the `Best Guess` and `Description Only` methods for TD determination is shown in the box below.
+    """
+)
+with st.expander("Comparison"):
+    st.write(
+        f"""
+    There is generally a significant difference between the price of TD-scoring momemnts based on the method used. 
+    The number in parentheses is the ratio of  Best Guess TD Moments to Description TD Moments (so `1.19 BG: Desc` means there are 1.19 times more Moments labeled as TD scoring using the Best guess method) 
+        """
+    )
+    st.subheader("TD in moment")
+    cols = st.columns(ncols)
+    get_metrics(
+        df,
+        cols,
+        ["Best Guess (Moment TD)", "Description only (Moment TD)"],
+        pos_subset,
+        "Best Guess",
+        pos_column,
+    )
+
+    st.subheader("TD in Game")
+    cols = st.columns(ncols)
+    get_metrics(
+        df,
+        cols,
+        ["Best Guess: (In-game TD)", "Description only (Moment TD)"],
+        pos_subset,
+        "Best Guess",
+        pos_column,
+    )
 
 
 st.header("All Day Purchases based on recent Player performance")

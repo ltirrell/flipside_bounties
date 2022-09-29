@@ -10,7 +10,6 @@ import pandas as pd
 import streamlit as st
 from jinja2 import Environment, FileSystemLoader
 from shroomdk import ShroomDK
-from streamlit.type_util import Key
 
 teams = [
     "Arizona Cardinals",
@@ -52,7 +51,7 @@ teams = [
     "Washington Football Team",
 ]
 
-pbp_fields = fields = [
+pbp_fields = [
     "play_id",
     "game_id",
     "home_team",
@@ -71,6 +70,8 @@ pbp_fields = fields = [
     "fumble_lost",
     "first_down",
 ]
+
+rarity_dict = {"COMMON": 0, "RARE": 1, "LEGENDARY": 2, "ULTIMATE": 3}
 
 
 API_KEY = st.secrets["flipside"]["api_key"]
@@ -237,8 +238,6 @@ def convert_timestr(time):
 
 
 def scored_td_in_game(row):
-    if not pd.isna(row.pbp_td):
-        return row.pbp_td
     if not pd.isna(row.game_td):
         return row.game_td
     else:
@@ -254,12 +253,12 @@ def scored_td_in_moment(row):
         return row.description_td
 
 
-def get_td_data(score_data, weekly_df, pbp_df, team_abbr):
-    score_data["description_td"] = score_data.Moment_Description.str.contains(
+def get_td_data(df, weekly_df, pbp_df, team_abbr):
+    df["description_td"] = df.Moment_Description.str.contains(
         "td | touchdown", regex=True, case=False
-    ) & (score_data.Set_Name != "Move the Chains")
+    ) & (df.Set_Name != "Move the Chains")
 
-    unique_plays = score_data.groupby("unique_id").first().reset_index()
+    unique_plays = df.groupby("unique_id").first().reset_index()
 
     game_td_func = partial(scored_td, df=weekly_df, data_type="stats")
     pbp_td_func = partial(scored_td, df=pbp_df, data_type="pbp", team_lookup=team_abbr)
@@ -269,14 +268,43 @@ def get_td_data(score_data, weekly_df, pbp_df, team_abbr):
     )
     unique_plays["pbp_td"] = unique_plays.apply(pbp_td_func, axis=1)
 
-    score_data = score_data.merge(
+    df = df.merge(
         unique_plays[["unique_id", "game_td", "pbp_td"]], on="unique_id"
     ).reset_index(drop=True)
 
-    score_data["scored_td_in_game"] = score_data.apply(scored_td_in_game, axis=1)
-    score_data["scored_td_in_moment"] = score_data.apply(scored_td_in_moment, axis=1)
+    df["scored_td_in_game"] = df.apply(scored_td_in_game, axis=1)
+    df["scored_td_in_moment"] = df.apply(scored_td_in_moment, axis=1)
 
-    return score_data
+    return df
+
+
+def won_game(row):
+    team = row.Team
+    home_team = row.Home_Team_Name
+    home_team_score = int(row.Home_Team_Score)
+    away_team_score = int(row.Away_Team_Score)
+
+    home_team_won = home_team_score > away_team_score
+
+    if team == home_team:
+        return home_team_won
+    else:
+        return not home_team_won
+
+
+def tie_game(row):
+    home_team_score = int(row.Home_Team_Score)
+    away_team_score = int(row.Away_Team_Score)
+    return home_team_score == away_team_score
+
+
+def get_game_outcome(row):
+    if row.tie_game:
+        return "Tie"
+    if row.won_game:
+        return "Win"
+    else:
+        return "Loss"
 
 
 if __name__ == "__main__":
@@ -296,13 +324,8 @@ if __name__ == "__main__":
     )
     df = df.merge(sales_counts, on="NFT_ID")
     df["Resell_Number"] = df.groupby("NFT_ID")["tx_id"].cumcount()
+    df["Rarity"] = df.apply(lambda x: rarity_dict[x.Moment_Tier], axis=1)
 
-    # #@# just saving file with TD data now
-    # df.to_csv(
-    #     "data/current_allday_data.csv.gz",
-    #     index=False,
-    #     compression="gzip",
-    # )
     # @# debugging
     # df = pd.read_csv(
     #     "data/current_allday_data.csv.gz",
@@ -326,10 +349,15 @@ if __name__ == "__main__":
     team_abbr["Washington Football Team"] = "WAS"
     team_abbr["Los Angeles Rams"] = "LA"  # not sure why this is just a 2 letter abbrev
 
+    schedule_data = nfl.import_schedules(get_years_after_date(years, 1999))
+    schedule_data.to_csv("data/schedule_data.csv", index=False)
+
     weekly_data = nfl.import_weekly_data(get_years_after_date(years, 1999))
     weekly_data.to_csv("data/weekly_data.csv", index=False)
 
-    pbp_data = nfl.import_pbp_data(get_years_after_date(years, 1999), columns=fields)
+    pbp_data = nfl.import_pbp_data(
+        get_years_after_date(years, 1999), columns=pbp_fields
+    )
     pbp_data = pd.read_csv("data/pbp.csv.gz")
     pbp_data["Season"] = pbp_data.game_id.str.split("_").str[0]
     pbp_data.to_csv(
@@ -339,6 +367,10 @@ if __name__ == "__main__":
     )
 
     main_with_td = get_td_data(df, weekly_data, pbp_data, team_abbr)
+    # TODO: eventually add lines etc info from schedule_data
+    main_with_td["won_game"] = main_with_td.apply(won_game, axis=1)
+    main_with_td["tie_game"] = main_with_td.apply(tie_game, axis=1)
+    main_with_td["Game Outcome"] = main_with_td.apply(get_game_outcome, axis=1)
     main_with_td.to_csv(
         "data/current_allday_data.csv.gz",
         index=False,
@@ -365,6 +397,3 @@ if __name__ == "__main__":
     for x in ["pass", "rec", "rush"]:
         df = nfl.import_pfr(x, get_years_after_date(years, 2019))
         df.to_csv(f"data/pfr_data_{x}.csv", index=False)
-
-    schedule_data = nfl.import_schedules(get_years_after_date(years, 1999))
-    schedule_data.to_csv("data/schedule_data.csv", index=False)
