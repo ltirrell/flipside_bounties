@@ -17,7 +17,7 @@ __all__ = [
 n_players = 40
 
 
-@st.cache(ttl=3600 * 24)
+@st.cache(ttl=3600 * 24, allow_output_mutation=True)
 def load_allday_data():
     df = pd.read_csv("data/current_allday_data.csv.gz")
     datecols = ["Datetime", "Date"]
@@ -25,7 +25,7 @@ def load_allday_data():
     return df
 
 
-@st.cache(ttl=3600 * 24)
+@st.cache(ttl=3600 * 24, allow_output_mutation=True)
 def load_stats_data(years=None):
     weekly_df = pd.read_csv("data/weekly_data.csv")
     season_df = pd.read_csv("data/season_data.csv")

@@ -126,7 +126,7 @@ position_type_dict = {
     "By Rarity": ("Moment_Tier", rarities),
 }
 
-score_data = main_data.copy()[main_data.Play_Type.isin(score_columns)].reset_index(
+score_data = main_data[main_data.Play_Type.isin(score_columns)].reset_index(
     drop=True
 )
 score_data = score_data.rename(columns=td_mapping)
@@ -165,19 +165,19 @@ agg_metric = c6.radio(
 )
 
 if date_range == "All Time":
-    df = score_data.copy()
+    df = score_data
 elif date_range == "2022 Full Season":
-    df = score_data.copy()[main_data.Date >= "2022-09-08"]
+    df = score_data[main_data.Date >= "2022-09-08"]
 elif date_range == "2022 Week 1":
-    df = score_data.copy()[
+    df = score_data[
         (score_data.Date >= "2022-09-08") & (score_data.Date < "2022-09-15")
     ]
 elif date_range == "2022 Week 2":
-    df = score_data.copy()[
+    df = score_data[
         (score_data.Date >= "2022-09-15") & (score_data.Date < "2022-09-22")
     ]
 elif date_range == "2022 Week 3":
-    df = score_data.copy()[
+    df = score_data[
         (score_data.Date >= "2022-09-22") & (score_data.Date < "2022-09-29")
     ]
 
@@ -228,6 +228,7 @@ grouped_all = grouped.copy()
 grouped_all["Position"] = "All"
 grouped_all["Position Group"] = "All"
 grouped = pd.concat([grouped, grouped_all]).reset_index(drop=True)
+del grouped_all
 
 select = alt.selection_single(on="mouseover")
 base = alt.Chart(
@@ -482,17 +483,17 @@ else:
         .reset_index(drop=True)
     )
 if date_range == "2022 Full Season":
-    df = main_data.copy()[main_data.Date >= "2022-09-08"]
+    df = main_data[main_data.Date >= "2022-09-08"]
 elif date_range == "2022 Week 1":
-    df = main_data.copy()[
+    df = main_data[
         (main_data.Date >= "2022-09-08") & (main_data.Date < "2022-09-15")
     ]
 elif date_range == "2022 Week 2":
-    df = main_data.copy()[
+    df = main_data[
         (main_data.Date >= "2022-09-15") & (main_data.Date < "2022-09-22")
     ]
 elif date_range == "2022 Week 3":
-    df = main_data.copy()[
+    df = main_data[
         (main_data.Date >= "2022-09-22") & (main_data.Date < "2022-09-29")
     ]
 
@@ -691,13 +692,13 @@ date_range = st.radio(
     horizontal=True,
 )
 if date_range == "Since 2022 preseason":
-    df = main_data.copy()[main_data.Date >= "2022-08-04"]
+    df = main_data[main_data.Date >= "2022-08-04"]
 elif date_range == "Since 2022 Week 1":
-    df = main_data.copy()[main_data.Date >= "2022-09-08"]
+    df = main_data[main_data.Date >= "2022-09-08"]
 elif date_range == "Since 2022 Week 2":
-    df = main_data.copy()[main_data.Date >= "2022-09-15"]
+    df = main_data[main_data.Date >= "2022-09-15"]
 elif date_range == "Since 2022 Week 3":
-    df = main_data.copy()[main_data.Date >= "2022-09-22"]
+    df = main_data[main_data.Date >= "2022-09-22"]
 else:
     df = main_data
 
