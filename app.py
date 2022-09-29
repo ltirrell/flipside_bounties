@@ -631,20 +631,24 @@ c2.altair_chart(chart)
 
 cols = st.columns(5)
 for i in list(range(num_players))[:5]:
-    image = Image.open(urlopen(stats_df.iloc[i]["headshot_url"]))
-    basewidth = 200
-    wpercent = basewidth / float(image.size[0])
-    hsize = int((float(image.size[1]) * float(wpercent)))
-    image = image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
-    cols[i].image(
-        image,
-        use_column_width="auto",
-    )
+    try: # don't want to error out if the image doesnt load
+        image = Image.open(urlopen(stats_df.iloc[i]["headshot_url"]))
+        basewidth = 200
+        wpercent = basewidth / float(image.size[0])
+        hsize = int((float(image.size[1]) * float(wpercent)))
+        image = image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
+        cols[i].image(
+            image,
+            use_column_width="auto",
+        )
+    except:
+        pass
     cols[i].metric(
         f"{player_display.iloc[i]['Player']} ({player_display.iloc[i]['Position']}) - {player_display.iloc[i]['Team']}",
         player_display.iloc[i][metric.replace("_", " ").title()],
         metric.replace("_", " ").title(),
     )
+
 
 
 with st.expander("Full Stats Infomation"):
