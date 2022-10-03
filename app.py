@@ -1,5 +1,5 @@
 from urllib.request import urlopen
-
+import json
 import altair as alt
 import pandas as pd
 import streamlit as st
@@ -60,35 +60,8 @@ The [XGBoost Python Package](https://xgboost.readthedocs.io/en/stable/python/ind
 Overall, the model explains about 69.2 percent of variance in the data (based on r^2 score); this isn't very accurate for prediction but is sufficient for determining which features most effect NFT Price.
 """
     )
-cols_to_keep = [
-    "Date",
-    "Datetime",
-    'marketplace_id',
-    "Player",
-    "Team",
-    "Position",
-    # "Position Group",
-    "Play_Type",
-    "Season",
-    "Week",
-    "Moment_Date",
-    "Game Outcome",
-    "won_game",
-    # "Scored Touchdown?",
-    "Moment_Tier",
-    "Rarity",
-    "Moment_Description",
-    "NFLALLDAY_ASSETS_URL",
-    "Total_Circulation",
-    "Price",
-    "tx_id",
-    "scored_td_in_moment",
-    "pbp_td",
-    "description_td",
-    "scored_td_in_game",
-    "game_td",
-]
-main_data = load_allday_data(cols_to_keep)
+
+# main_data = load_allday_data(cols_to_keep)
 
 st.header("Two minute Drill: What drives Moment price?")
 st.write(
@@ -110,56 +83,13 @@ Explore for yourself to see the various differences!
     """
 )
 
-score_columns = [
-    "Pass",
-    "Reception",
-    "Rush",
-    "Strip Sack",
-    "Interception",
-    "Fumble Recovery",  # ~50% TD
-    "Blocked Kick",  # 1/4 not td
-    "Punt Return",  # all TD
-    "Kick Return",  # 1/6 not td
-]
-td_mapping = {
-    "scored_td_in_moment": "Best Guess (Moment TD)",
-    "pbp_td": "Conservative (Moment TD)",
-    "description_td": "Description only (Moment TD)",
-    "scored_td_in_game": "Best Guess: (In-game TD)",
-    "game_td": "Conservative (In-game TD)",
-}
-
-all_pos = ["All"]
-offense = [
-    "QB",
-    "WR",
-    "RB",
-    "TE",
-    "OL",
-]
-defense = [
-    "DB",
-    "DL",
-    "LB",
-]
-team_pos = ["Team"]
-pos_groups = ["All", "Offense", "Defense", "Team"]
-positions = all_pos + offense + defense + team_pos
-rarities = ["COMMON", "RARE", "LEGENDARY", "ULTIMATE"]
-
-position_type_dict = {
-    "By Position": ("Position", positions),
-    "By Group": ("Position Group", pos_groups),
-    "By Rarity": ("Moment_Tier", rarities),
-}
-
-score_data = main_data[main_data.Play_Type.isin(score_columns)].reset_index(drop=True)
-score_data = score_data.rename(columns=td_mapping)
+# score_data = main_data[main_data.Play_Type.isin(score_columns)].reset_index(drop=True)
+# score_data = score_data.rename(columns=td_mapping)
 
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 date_range = c1.selectbox(
     "Date range:",
-    ["All Time", "2022 Full Season", "2022 Week 1", "2022 Week 2", "2022 Week 3"],
+    main_date_ranges,
     key="date_scores",
 )
 play_type = c2.selectbox(
@@ -188,77 +118,51 @@ agg_metric = c6.radio(
     ["Average Sales Price ($)", "Sales Count"],
     key="agg_metric_scores",
 )
+# TODO: uncomment, remove date_range stuff
+grouped = load_score_data(date_range, how_scores, play_type)
+# score_data["Scored Touchdown?"] = score_data[how_scores]
+# if play_type != "All":
+#     score_data = score_data[score_data.Play_Type == play_type]
 
-if date_range == "All Time":
-    df = score_data
-elif date_range == "2022 Full Season":
-    df = score_data[main_data.Date >= "2022-09-08"]
-elif date_range == "2022 Week 1":
-    df = score_data[
-        (score_data.Date >= "2022-09-08") & (score_data.Date < "2022-09-15")
-    ]
-elif date_range == "2022 Week 2":
-    df = score_data[
-        (score_data.Date >= "2022-09-15") & (score_data.Date < "2022-09-22")
-    ]
-elif date_range == "2022 Week 3":
-    df = score_data[
-        (score_data.Date >= "2022-09-22") & (score_data.Date < "2022-09-29")
-    ]
-
-
-df["Scored Touchdown?"] = df[how_scores]
-if play_type != "All":
-    df = df[df.Play_Type == play_type]
-
-
-def get_position_group(x):
-    if x in offense:
-        return "Offense"
-    if x in defense:
-        return "Defense"
-    if x in team_pos:
-        return "Team"
+# if date_range == "All Time":
+#     df = score_data
+# elif date_range == "2022 Full Season":
+#     df = score_data[main_data.Date >= "2022-09-08"]
+# elif date_range == "2022 Week 1":
+#     df = score_data[
+#         (score_data.Date >= "2022-09-08") & (score_data.Date < "2022-09-15")
+#     ]
+# elif date_range == "2022 Week 2":
+#     df = score_data[
+#         (score_data.Date >= "2022-09-15") & (score_data.Date < "2022-09-22")
+#     ]
+# elif date_range == "2022 Week 3":
+#     df = score_data[
+#         (score_data.Date >= "2022-09-22") & (score_data.Date < "2022-09-29")
+#     ]
 
 
-df["Position Group"] = df.Position.apply(get_position_group)
+# grouped["Scored Touchdown?"] = grouped[how_scores]
+# if play_type != "All":
+#     grouped = grouped[grouped.Play_Type == play_type]
 
-agg_dict = {
-    "Player": "first",
-    "Team": "first",
-    "Position": "first",
-    "Position Group": "first",
-    "Play_Type": "first",
-    "Season": "first",
-    "Week": "first",
-    "Moment_Date": "first",
-    "Game Outcome": "first",
-    "won_game": "first",
-    "Scored Touchdown?": "first",
-    "Moment_Tier": "first",
-    "Rarity": "first",
-    "Moment_Description": "first",
-    "NFLALLDAY_ASSETS_URL": "first",
-    "Total_Circulation": "first",
-    "Price": "mean",
-    "tx_id": "count",
-}
-grouped = df.groupby(["marketplace_id"]).agg(agg_dict).reset_index()
-grouped["Week"] = grouped.Week.astype(str)
-grouped["site"] = grouped.marketplace_id.apply(
-    lambda x: f"https://nflallday.com/listing/moment/{x}"
-)
+# # TODO remove:
+# df["Position Group"] = df.Position.apply(get_position_group)
 
-grouped_all = grouped.copy()
-grouped_all["Position"] = "All"
-grouped_all["Position Group"] = "All"
-grouped = pd.concat([grouped, grouped_all]).reset_index(drop=True)
-del grouped_all
+# grouped = df.groupby(["marketplace_id"]).agg(agg_dict).reset_index()
+# grouped["Week"] = grouped.Week.astype(str)
+# grouped["site"] = grouped.marketplace_id.apply(
+#     lambda x: f"https://nflallday.com/listing/moment/{x}"
+# )
 
+# grouped_all = grouped.copy()
+# grouped_all["Position"] = "All"
+# grouped_all["Position Group"] = "All"
+# grouped = pd.concat([grouped, grouped_all]).reset_index(drop=True)
+# del grouped_all
+# # TODO --
 select = alt.selection_single(on="mouseover")
-base = alt.Chart(
-    grouped,
-)
+base = alt.Chart(grouped)
 chart = (
     base.mark_point(size=110, filled=True)
     .encode(
@@ -358,16 +262,13 @@ Other factors, such as TD scoring vs non TD scoring Moments, show some clear dif
     """
 )
 if position_type == "By Position":
-    pos_subset = [x for x in positions if x in ["All"] + df.Position.unique().tolist()]
+    pos_subset = [
+        x for x in positions if x in ["All"] + grouped.Position.unique().tolist()
+    ]
     pos_column = position_type_dict[position_type][0]
 else:
     pos_subset = position_type_dict[position_type][1]
     pos_column = position_type_dict[position_type][0]
-
-# TODO: summary metrics? though not very useful
-# cols = st.columns(5)
-# get_metrics(df, cols[0], "Scored Touchdown?", pos_subset, "TDs", pos_column, summary=True)
-# get_metrics(df, cols[1], "won_game", pos_subset, "Winners", pos_column, summary=True)
 
 ncols = len(pos_subset) if len(pos_subset) < 5 else 5
 
@@ -379,15 +280,22 @@ The price of TD scoring vs non-TD scoring Moments for each Position/Position Gro
     """
 )
 cols = st.columns(ncols)
-get_metrics(
-    df if agg_metric == "Average Sales Price ($)" else grouped,
-    cols,
-    "Scored Touchdown?",
-    pos_subset,
+tds_ttests = load_ttest(
+    date_range,
+    play_type,
+    how_scores,
+    agg_metric,
+    position_type,
+    how_scores,
     "TDs",
-    pos_column,
-    agg_column="Price" if agg_metric == "Average Sales Price ($)" else "tx_id",
 )
+for i, x in enumerate(tds_ttests):
+    position_info, comparison, sig = x
+    cols[i % len(cols)].metric(
+        position_info,
+        comparison,
+        sig,
+    )
 
 st.subheader("Winner's circle")
 st.write("**Are game winning players traded more?**")
@@ -397,15 +305,16 @@ The price of Game Winners vs Game Losing Moments for each Position/Position Grou
     """
 )
 cols = st.columns(ncols)
-get_metrics(
-    df if agg_metric == "Average Sales Price ($)" else grouped,
-    cols,
-    "won_game",
-    pos_subset,
-    "Winners",
-    pos_column,
-    agg_column="Price" if agg_metric == "Average Sales Price ($)" else "tx_id",
+winners_ttests = load_ttest(
+    date_range, play_type, how_scores, agg_metric, position_type, "won_game", "Winners"
 )
+for i, x in enumerate(winners_ttests):
+    position_info, comparison, sig = x
+    cols[i % len(cols)].metric(
+        position_info,
+        comparison,
+        sig,
+    )
 
 st.subheader("Coach's challenge")
 st.write("**If TDs are defined differently, does that lead to different results?**")
@@ -423,25 +332,42 @@ with st.expander("Comparison"):
     )
     st.subheader("TD in moment")
     cols = st.columns(ncols)
-    get_metrics(
-        df,
-        cols,
+    moment_best_guess_ttests = load_ttest(
+        date_range,
+        play_type,
+        how_scores,
+        agg_metric,
+        position_type,
         ["Best Guess (Moment TD)", "Description only (Moment TD)"],
-        pos_subset,
-        "Best Guess",
-        pos_column,
+        "Best Guess Moment",
     )
+
+    for i, x in enumerate(moment_best_guess_ttests):
+        position_info, comparison, sig = x
+        cols[i % len(cols)].metric(
+            position_info,
+            comparison,
+            sig,
+        )
 
     st.subheader("TD in Game")
     cols = st.columns(ncols)
-    get_metrics(
-        df,
-        cols,
+    game_best_guess_ttests = load_ttest(
+        date_range,
+        play_type,
+        how_scores,
+        agg_metric,
+        position_type,
         ["Best Guess: (In-game TD)", "Description only (Moment TD)"],
-        pos_subset,
-        "Best Guess",
-        pos_column,
+        "Best Guess Game",
     )
+    for i, x in enumerate(game_best_guess_ttests):
+        position_info, comparison, sig = x
+        cols[i % len(cols)].metric(
+            position_info,
+            comparison,
+            sig,
+        )
 
 
 st.header("All Day Purchases based on recent Player performance")
@@ -492,9 +418,7 @@ if st.checkbox("Load Section", key="load_performance"):
         key="radio_stats2",
     )
 
-    weekly_df_2022, season_df_2022 = load_stats_data(
-        years=2022
-    )
+    weekly_df_2022, season_df_2022 = load_stats_data(years=2022)
     if date_range == "2022 Full Season":
         stats_df = season_df_2022
     elif date_range == "2022 Week 1":
@@ -514,20 +438,21 @@ if st.checkbox("Load Section", key="load_performance"):
             .sort_values(by=metric, ascending=False)
             .reset_index(drop=True)
         )
-    if date_range == "2022 Full Season":
-        df = main_data[main_data.Date >= "2022-09-08"]
-    elif date_range == "2022 Week 1":
-        df = main_data[
-            (main_data.Date >= "2022-09-08") & (main_data.Date < "2022-09-15")
-        ]
-    elif date_range == "2022 Week 2":
-        df = main_data[
-            (main_data.Date >= "2022-09-15") & (main_data.Date < "2022-09-22")
-        ]
-    elif date_range == "2022 Week 3":
-        df = main_data[
-            (main_data.Date >= "2022-09-22") & (main_data.Date < "2022-09-29")
-        ]
+    df = load_player_data(date_range, agg_metric)
+    # if date_range == "2022 Full Season":
+    #     df = main_data[main_data.Date >= "2022-09-08"]
+    # elif date_range == "2022 Week 1":
+    #     df = main_data[
+    #         (main_data.Date >= "2022-09-08") & (main_data.Date < "2022-09-15")
+    #     ]
+    # elif date_range == "2022 Week 2":
+    #     df = main_data[
+    #         (main_data.Date >= "2022-09-15") & (main_data.Date < "2022-09-22")
+    #     ]
+    # elif date_range == "2022 Week 3":
+    #     df = main_data[
+    #         (main_data.Date >= "2022-09-22") & (main_data.Date < "2022-09-29")
+    #     ]
 
     top_players = stats_df.iloc[:num_players]
     player_display = top_players[
@@ -552,8 +477,9 @@ if st.checkbox("Load Section", key="load_performance"):
         .reset_index()
     )
     grouped = grouped.merge(video_url, on=["Date", "Player", "Position", "Team"])
-    grouped["Date"] = grouped.Date.dt.tz_localize("US/Pacific")
-    players = top_players[["player_display_name", "position"]]
+    grouped["Date"] = pd.to_datetime(grouped["Date"])
+    # grouped["Date"] = grouped.Date.dt.tz_localize("US/Pacific")
+    # players = top_players[["player_display_name", "position"]]
     grouped["Top_Player"] = grouped.apply(
         lambda x: True
         if x.Player in top_players.player_display_name.values
@@ -716,62 +642,16 @@ NOTE: this is disabled by default, check the box to load this section!
 if st.checkbox("Load Section", key="load_play"):
     date_range = st.radio(
         "Date range:",
-        [
-            "All dates",
-            "Since 2022 preseason",
-            "Since 2022 Week 1",
-            "Since 2022 Week 2",
-            "Since 2022 Week 3",
-        ],
+        play_v_player_date_ranges,
         key="radio_summary",
         horizontal=True,
     )
-    if date_range == "Since 2022 preseason":
-        df = main_data[main_data.Date >= "2022-08-04"]
-    elif date_range == "Since 2022 Week 1":
-        df = main_data[main_data.Date >= "2022-09-08"]
-    elif date_range == "Since 2022 Week 2":
-        df = main_data[main_data.Date >= "2022-09-15"]
-    elif date_range == "Since 2022 Week 3":
-        df = main_data[main_data.Date >= "2022-09-22"]
-    else:
-        df = main_data
-
-    play_type_price_data = (
-        df.groupby(
-            [
-                "Play_Type",
-            ]
-        )["Price"]
-        .agg(["mean", "count"])
-        .reset_index()
-    )
-    play_type_price_data["Position"] = "N/A"
-    play_type_tier_price_data = (
-        df.groupby(
-            [
-                "Play_Type",
-                "Moment_Tier",
-            ]
-        )["Price"]
-        .agg(["mean", "count"])
-        .reset_index()
-    )
-    play_type_tier_price_data["Position"] = "N/A"
-
-    player_price_data = (
-        df.groupby(["Player", "Position"])["Price"].agg(["mean", "count"]).reset_index()
-    )
-    player_tier_price_data = (
-        df.groupby(["Player", "Moment_Tier", "Position"])["Price"]
-        .agg(["mean", "count"])
-        .reset_index()
-    )
-    topN_player_data = (
-        player_price_data.sort_values("mean", ascending=False)
-        .reset_index(drop=True)
-        .iloc[:n_players]
-    )
+    (
+        play_type_price_data,
+        play_type_tier_price_data,
+        player_tier_price_data,
+        topN_player_data,
+    ) = load_play_v_player_data(date_range)
 
     tier = st.selectbox(
         "Choose the Moment Tier (the rarity level of the Moment NFT)",

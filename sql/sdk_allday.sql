@@ -45,8 +45,8 @@ WITH updated_metadata AS (
         nft_id AS "NFT_ID",
         series AS "Series",
         set_name AS "Set_Name",
-        moment_stats_full ['id'] as "unique_id",
-        moment_stats_full ['flowID'] as "marketplace_id",
+        moment_stats_full ['id'] AS "unique_id",
+        moment_stats_full ['flowID'] AS "marketplace_id",
         -- video_urls as "Video_URLs",
         CONCAT(
             'https://assets.nflallday.com/editions/',
@@ -58,7 +58,11 @@ WITH updated_metadata AS (
             '_',
             LOWER(REPLACE(set_name, ' ', '_')),
             '_capture_AnimationCapture_Video_Square_Grey_1080_1080_Grey.mp4'
-        ) AS nflallday_assets_url
+        ) AS nflallday_assets_url,
+        CONCAT(
+            'https://nflallday.com/listing/moment/',
+            "marketplace_id"
+        ) AS "site"
     FROM
         flow.core.dim_allday_metadata
 ),
