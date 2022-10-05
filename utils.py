@@ -1,9 +1,12 @@
+import json
+from urllib.request import urlopen
+
 import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
+from PIL import Image
 from scipy.stats import ttest_ind
-import json
 
 __all__ = [
     "n_players",
@@ -34,7 +37,13 @@ __all__ = [
     "load_ttest",
     "stats_subset",
     "load_player_data",
-    "load_play_v_player_data"
+    "load_play_v_player_data",
+    "load_headshot",
+    "load_challenge_data",
+    "player_mapping",
+    "week_timings",
+    "game_timings",
+    "load_challenge_player_data",
 ]
 
 cols_to_keep = [
@@ -105,21 +114,30 @@ pos_groups = ["All", "Offense", "Defense", "Team"]
 positions = all_pos + offense + defense + team_pos
 rarities = ["COMMON", "RARE", "LEGENDARY", "ULTIMATE"]
 
+# #TODO: clean up date ranges
 main_date_ranges = [
     "All Time",
     "2022 Full Season",
     "2022 Week 1",
     "2022 Week 2",
     "2022 Week 3",
+    "2022 Week 4",
 ]
-play_v_player_date_ranges =         [
-            "All dates",
-            "Since 2022 preseason",
-            "Since 2022 Week 1",
-            "Since 2022 Week 2",
-            "Since 2022 Week 3",
-        ]
-stats_date_ranges = ["2022 Full Season", "2022 Week 1", "2022 Week 2", "2022 Week 3"]
+play_v_player_date_ranges = [
+    "All dates",
+    "Since 2022 preseason",
+    "Since 2022 Week 1",
+    "Since 2022 Week 2",
+    "Since 2022 Week 3",
+    "Since 2022 Week 4",
+]
+stats_date_ranges = [
+    "2022 Full Season",
+    "2022 Week 1",
+    "2022 Week 2",
+    "2022 Week 3",
+    "2022 Week 4",
+]
 
 position_type_dict = {
     "By Position": ("Position", positions),
@@ -169,6 +187,117 @@ stats_subset = [
     "rushing_tds",
     "rushing_yards",
 ]
+
+player_mapping = {
+    "Patrick Mahomes": "Patrick Mahomes II",
+    "Gabe Davis	": "Gabriel Davis",
+}
+
+week_timings = {
+    1: ("2022-09-07", "2022-09-14"),
+    2: ("2022-09-14", "2022-09-21"),
+    3: ("2022-09-21", "2022-09-28"),
+    4: ("2022-09-28", "2022-10-05"),
+}
+
+game_timings = {
+    1: {
+        "thursday": (
+            pd.Timestamp("2022-09-08 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-08 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "slate": (
+            pd.Timestamp("2022-09-11 13:00:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-11 19:45:00-0400", tz="US/Eastern"),
+        ),
+        "sunday_night": (
+            pd.Timestamp("2022-09-11 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-11 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "monday": (
+            pd.Timestamp("2022-09-12 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-12 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "weekly": (
+            pd.Timestamp("2022-09-07 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-12 23:30:00-0400", tz="US/Eastern"),
+        ),
+    },
+    2: {
+        "thursday": (
+            pd.Timestamp("2022-09-15 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-15 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "slate": (
+            pd.Timestamp("2022-09-18 13:00:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-18 19:45:00-0400", tz="US/Eastern"),
+        ),
+        "sunday_night": (
+            pd.Timestamp("2022-09-18 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-18 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "monday": (
+            pd.Timestamp("2022-09-19 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-19 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "weekly": (
+            pd.Timestamp("2022-09-15 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-19 23:30:00-0400", tz="US/Eastern"),
+        ),
+    },
+    3: {
+        "thursday": (
+            pd.Timestamp("2022-09-22 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-22 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "slate": (
+            pd.Timestamp("2022-09-25 09:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-25 19:45:00-0400", tz="US/Eastern"),
+        ),
+        "sunday_night": (
+            pd.Timestamp("2022-09-25 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-25 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "monday": (
+            pd.Timestamp("2022-09-26 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-26 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "weekly": (
+            pd.Timestamp("2022-09-22 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-26 23:30:00-0400", tz="US/Eastern"),
+        ),
+    },
+    4: {  # #TODO: add for
+        "thursday": (
+            pd.Timestamp("2022-09-29 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-29 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "slate": (
+            pd.Timestamp("2022-10-02 09:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-02 19:45:00-0400", tz="US/Eastern"),
+        ),
+        "sunday_night": (
+            pd.Timestamp("2022-10-02 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-02 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "monday": (
+            pd.Timestamp("2022-10-03 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-03 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "weekly": (
+            pd.Timestamp("2022-09-29 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-03 23:30:00-0400", tz="US/Eastern"),
+        ),
+        "bills_ravens": (
+            pd.Timestamp("2022-10-02 13:00:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-02 16:15:00-0400", tz="US/Eastern"),
+        ),
+        "49ers_rams": (
+            pd.Timestamp("2022-10-03 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-03 23:30:00-0400", tz="US/Eastern"),
+        ),
+    },
+}
 
 n_players = 40
 
@@ -240,6 +369,12 @@ def load_stats_data(years=None, subset=False):
         )
 
 
+@st.cache(ttl=3600 * 4)
+def load_challenge_player_data(challenge):
+    df = pd.read_csv(f"data/challenges/{challenge}.csv.gz")
+    return df
+
+
 @st.cache(ttl=3600 * 24)
 def convert_df(df):
     """From: https://docs.streamlit.io/knowledge-base/using-streamlit/how-download-pandas-dataframe-csv"""
@@ -262,6 +397,16 @@ def get_position_group(x):
         return "Defense"
     if x in team_pos:
         return "Team"
+
+
+@st.cache(ttl=3600 * 24 * 7)
+def load_headshot(headshot_url):
+    image = Image.open(urlopen(headshot_url))
+    basewidth = 200
+    wpercent = basewidth / float(image.size[0])
+    hsize = int((float(image.size[1]) * float(wpercent)))
+    image = image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
+    return image
 
 
 def alt_mean_price(
@@ -491,22 +636,43 @@ def load_ttest(
     )
     return data[key]
 
+
 # @st.cache(ttl=3600 * 24)
 def load_player_data(date_range, agg_metric):
     date_str = date_range.replace(" ", "_")
     df = pd.read_csv(f"data/cache/player-{date_str}-{agg_metric}--grouped.csv")
     return df
 
+
 @st.cache(ttl=3600 * 24)
 def load_play_v_player_data(date_range):
     date_str = date_range.replace(" ", "_")
-    play_type_price_data = pd.read_csv(f"data/cache/play_v_player-play_type-{date_str}--grouped.csv")
-    play_type_tier_price_data = pd.read_csv(f"data/cache/play_v_player-play_type_tier-{date_str}--grouped.csv")
-    player_tier_price_data = pd.read_csv(f"data/cache/play_v_player-player_tier-{date_str}--grouped.csv")
-    topN_player_data = pd.read_csv(f"data/cache/play_v_player-topN_player-{date_str}--grouped.csv")
+    play_type_price_data = pd.read_csv(
+        f"data/cache/play_v_player-play_type-{date_str}--grouped.csv"
+    )
+    play_type_tier_price_data = pd.read_csv(
+        f"data/cache/play_v_player-play_type_tier-{date_str}--grouped.csv"
+    )
+    player_tier_price_data = pd.read_csv(
+        f"data/cache/play_v_player-player_tier-{date_str}--grouped.csv"
+    )
+    topN_player_data = pd.read_csv(
+        f"data/cache/play_v_player-topN_player-{date_str}--grouped.csv"
+    )
     return (
-            play_type_price_data,
-            play_type_tier_price_data,
-            player_tier_price_data,
-            topN_player_data,
-        )
+        play_type_price_data,
+        play_type_tier_price_data,
+        player_tier_price_data,
+        topN_player_data,
+    )
+
+@st.cache(ttl=3600 * 4)
+def load_challenge_data():
+    challenges = pd.read_csv("data/NFLALLDAY_Challenges-Challenges.csv")
+    datecols = ["Start Time (EDT)", "End Time (EDT)"]
+    challenges[datecols] = challenges[datecols].apply(pd.to_datetime)
+    challenges["Index"] = challenges.index
+    challenges["Moments Needed"] = challenges["What You'll Need"].apply(
+        lambda x: ", ".join(json.loads(x))
+    )
+    return challenges

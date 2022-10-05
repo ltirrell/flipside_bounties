@@ -52,23 +52,74 @@ teams = [
 ]
 
 pbp_fields = [
-    "play_id",
+    "fumble",
+    "away_team",
+    "first_down",
+    "fumble_lost",
     "game_id",
     "home_team",
-    "away_team",
-    "week",
+    "interception",
+    "pass_touchdown",
+    "play_id",
     "qtr",
     "quarter_seconds_remaining",
-    "sack",
-    "touchdown",
-    "pass_touchdown",
-    "rush_touchdown",
     "return_touchdown",
-    "interception",
+    "rush_touchdown",
+    "sack",
     "safety",
     "tackled_for_loss",
-    "fumble_lost",
-    "first_down",
+    "touchdown",
+    "week",
+    "complete_pass",
+    "fantasy_player_id",
+    "fantasy_player_name",
+    "forced_fumble_player_1_player_id",
+    "forced_fumble_player_1_player_name",
+    "forced_fumble_player_1_team",
+    "forced_fumble_player_2_player_id",
+    "forced_fumble_player_2_player_name",
+    "forced_fumble_player_2_team",
+    "fumble_recovery_1_player_id",
+    "fumble_recovery_1_player_name",
+    "fumble_recovery_1_team",
+    "fumble_recovery_1_yards",
+    "fumble_recovery_2_player_id",
+    "fumble_recovery_2_player_name",
+    "fumble_recovery_2_team",
+    "fumble_recovery_2_yards",
+    "fumbled_1_player_id",
+    "fumbled_1_player_name",
+    "fumbled_1_team",
+    "fumbled_2_player_id",
+    "fumbled_2_player_name",
+    "fumbled_2_team",
+    "half_sack_1_player_id",
+    "half_sack_1_player_name",
+    "half_sack_2_player_id",
+    "half_sack_2_player_name",
+    "interception_player_id",
+    "interception_player_name",
+    "kicker_player_id",
+    "kicker_player_name",
+    "kickoff_returner_player_id",
+    "kickoff_returner_player_name",
+    "passer_player_id",
+    "passer_player_name",
+    "passing_yards",
+    "punt_returner_player_id",
+    "punt_returner_player_name",
+    "punter_player_id",
+    "punter_player_name",
+    "receiver_player_id",
+    "receiver_player_name",
+    "receiving_yards",
+    "rusher_player_id",
+    "rusher_player_name",
+    "rushing_yards",
+    "sack_player_id",
+    "sack_player_name",
+    "safety_player_id",
+    "safety_player_name",
 ]
 
 rarity_dict = {"COMMON": 0, "RARE": 1, "LEGENDARY": 2, "ULTIMATE": 3}
@@ -212,7 +263,7 @@ def scored_td(row, df, data_type, team_lookup=None):
             # try:
             play = df[
                 (df["home_team"] == home_team)
-                & (df["years"] == szn)  # TODO: change to Season
+                & (df["Season"] == szn)
                 & (df["week"] == wk)
                 & (df["qtr"] == qtr)
                 & (df["quarter_seconds_remaining"] == time_left)
@@ -308,10 +359,10 @@ def get_game_outcome(row):
 
 
 if __name__ == "__main__":
-
-    for team in teams:
-        print(f"Getting data for {team}...")
-        get_flipside_team_data(team)
+    # #TODO: turn on when updating
+    # for team in teams:
+    #     print(f"Getting data for {team}...")
+    #     get_flipside_team_data(team)
 
     data_dir = Path("data", get_datetime_string())
     df = combine_flipside_data(data_dir)
@@ -326,7 +377,19 @@ if __name__ == "__main__":
     df["Resell_Number"] = df.groupby("NFT_ID")["tx_id"].cumcount()
     df["Rarity"] = df.apply(lambda x: rarity_dict[x.Moment_Tier], axis=1)
 
-    # @# debugging
+    all_day_debuts = (
+        df[df.Position != "Team"].groupby("Player").marketplace_id.min().reset_index()
+    )
+    all_day_debuts["all_day_debut"] = 1
+    df = df.merge(all_day_debuts, on=["marketplace_id", "Player"], how="left")
+    df.loc[df.all_day_debut.isna(), "all_day_debut"] = 0
+    df["rookie_year"] = df.Season == df.Rookie_Year
+    df["rookie_mint"] = df.apply(
+        lambda x: (x.Series == "Series 1" and x.Rookie_Year == 2021)
+        or (x.Series == "Series 2" and x.Rookie_Year == 2022),
+        axis=1,
+    )
+    # #@# debugging
     # df = pd.read_csv(
     #     "data/current_allday_data.csv.gz",
     # )
@@ -355,19 +418,29 @@ if __name__ == "__main__":
     weekly_data = nfl.import_weekly_data(get_years_after_date(years, 1999))
     weekly_data.to_csv("data/weekly_data.csv", index=False)
 
+    # #TODO: turn on when updating
+    # nfl.cache_pbp(
+    #     get_years_after_date(years, 1999),
+    #     downcast=False,
+    # )
     pbp_data = nfl.import_pbp_data(
-        get_years_after_date(years, 1999), columns=pbp_fields
+        get_years_after_date(years, 1999),
+        downcast=False,
+        cache=True
+        # columns=pbp_fields  # no longer using fields
     )
-    pbp_data = pd.read_csv("data/pbp.csv.gz")
-    pbp_data["Season"] = pbp_data.game_id.str.split("_").str[0]
+    pbp_data["Season"] = pd.to_numeric(pbp_data.game_id.str.split("_").str[0])
+  
     pbp_data.to_csv(
         "data/pbp.csv.gz",
         index=False,
         compression="gzip",
     )
+    pbp_2022 = pbp_data[pbp_data.Season == 2022].reset_index(drop=True)
+    pbp_2022.to_csv('data/pbp_2022.csv.gz', index=False, compression='gzip')
 
     main_with_td = get_td_data(df, weekly_data, pbp_data, team_abbr)
-    # TODO: eventually add lines etc info from schedule_data
+    # #TODO: eventually add gambling lines etc info from schedule_data
     main_with_td["won_game"] = main_with_td.apply(won_game, axis=1)
     main_with_td["tie_game"] = main_with_td.apply(tie_game, axis=1)
     main_with_td["Game Outcome"] = main_with_td.apply(get_game_outcome, axis=1)
