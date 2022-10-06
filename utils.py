@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from PIL import Image
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind, ttest_rel
 
 __all__ = [
     "n_players",
@@ -44,6 +44,11 @@ __all__ = [
     "week_timings",
     "game_timings",
     "load_challenge_player_data",
+    "alt_challenge_chart",
+    "get_challenge_summary",
+    "get_challenge_ttests",
+    "alt_challenge_game",
+    "load_challenge_reward",
 ]
 
 cols_to_keep = [
@@ -53,6 +58,8 @@ cols_to_keep = [
     "Player",
     "Team",
     "Position",
+    "Series",
+    "Set_Name",
     # "Position Group",
     "Play_Type",
     "Season",
@@ -156,6 +163,8 @@ agg_dict = {
     "Moment_Date": "first",
     "Game Outcome": "first",
     "won_game": "first",
+    "Series": "first",
+    "Set_Name": "first",
     # "Scored Touchdown?": "first",
     "Description only (Moment TD)": "first",
     "Conservative (In-game TD)": "first",
@@ -194,99 +203,99 @@ player_mapping = {
 }
 
 week_timings = {
-    1: ("2022-09-07", "2022-09-14"),
-    2: ("2022-09-14", "2022-09-21"),
-    3: ("2022-09-21", "2022-09-28"),
-    4: ("2022-09-28", "2022-10-05"),
+    1: ("2022-09-08", "2022-09-15"),
+    2: ("2022-09-15", "2022-09-22"),
+    3: ("2022-09-22", "2022-09-29"),
+    4: ("2022-09-29", "2022-10-06"),
 }
 
 game_timings = {
     1: {
         "thursday": (
             pd.Timestamp("2022-09-08 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-08 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-08 23:00:00-0400", tz="US/Eastern"),
         ),
         "slate": (
             pd.Timestamp("2022-09-11 13:00:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-11 19:45:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-11 19:30:00-0400", tz="US/Eastern"),
         ),
         "sunday_night": (
             pd.Timestamp("2022-09-11 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-11 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-11 23:00:00-0400", tz="US/Eastern"),
         ),
         "monday": (
             pd.Timestamp("2022-09-12 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-12 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-12 23:00:00-0400", tz="US/Eastern"),
         ),
         "weekly": (
-            pd.Timestamp("2022-09-07 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-12 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-08 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-12 23:00:00-0400", tz="US/Eastern"),
         ),
     },
     2: {
         "thursday": (
             pd.Timestamp("2022-09-15 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-15 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-15 23:00:00-0400", tz="US/Eastern"),
         ),
         "slate": (
             pd.Timestamp("2022-09-18 13:00:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-18 19:45:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-18 19:30:00-0400", tz="US/Eastern"),
         ),
         "sunday_night": (
             pd.Timestamp("2022-09-18 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-18 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-18 23:00:00-0400", tz="US/Eastern"),
         ),
         "monday": (
             pd.Timestamp("2022-09-19 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-19 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-19 23:00:00-0400", tz="US/Eastern"),
         ),
         "weekly": (
             pd.Timestamp("2022-09-15 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-19 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-19 23:00:00-0400", tz="US/Eastern"),
         ),
     },
     3: {
         "thursday": (
             pd.Timestamp("2022-09-22 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-22 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-22 23:00:00-0400", tz="US/Eastern"),
         ),
         "slate": (
             pd.Timestamp("2022-09-25 09:30:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-25 19:45:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-25 19:30:00-0400", tz="US/Eastern"),
         ),
         "sunday_night": (
             pd.Timestamp("2022-09-25 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-25 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-25 23:00:00-0400", tz="US/Eastern"),
         ),
         "monday": (
             pd.Timestamp("2022-09-26 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-26 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-26 23:00:00-0400", tz="US/Eastern"),
         ),
         "weekly": (
             pd.Timestamp("2022-09-22 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-26 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-26 23:00:00-0400", tz="US/Eastern"),
         ),
     },
     4: {  # #TODO: add for
         "thursday": (
             pd.Timestamp("2022-09-29 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-09-29 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-09-29 23:00:00-0400", tz="US/Eastern"),
         ),
         "slate": (
             pd.Timestamp("2022-10-02 09:30:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-10-02 19:45:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-02 19:30:00-0400", tz="US/Eastern"),
         ),
         "sunday_night": (
             pd.Timestamp("2022-10-02 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-10-02 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-02 23:00:00-0400", tz="US/Eastern"),
         ),
         "monday": (
             pd.Timestamp("2022-10-03 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-10-03 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-03 23:00:00-0400", tz="US/Eastern"),
         ),
         "weekly": (
             pd.Timestamp("2022-09-29 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-10-03 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-03 23:00:00-0400", tz="US/Eastern"),
         ),
         "bills_ravens": (
             pd.Timestamp("2022-10-02 13:00:00-0400", tz="US/Eastern"),
@@ -294,7 +303,7 @@ game_timings = {
         ),
         "49ers_rams": (
             pd.Timestamp("2022-10-03 20:15:00-0400", tz="US/Eastern"),
-            pd.Timestamp("2022-10-03 23:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-03 23:00:00-0400", tz="US/Eastern"),
         ),
     },
 }
@@ -367,12 +376,6 @@ def load_stats_data(years=None, subset=False):
             # roster_df[roster_df.season.isin(years)],
             # team_df,
         )
-
-
-@st.cache(ttl=3600 * 4)
-def load_challenge_player_data(challenge):
-    df = pd.read_csv(f"data/challenges/{challenge}.csv.gz")
-    return df
 
 
 @st.cache(ttl=3600 * 24)
@@ -615,7 +618,7 @@ def load_score_data(date_range, how_scores, play_type):
     return df
 
 
-# @st.cache(ttl=3600 * 24)
+@st.cache(ttl=3600 * 24)
 def load_ttest(
     date_range,
     play_type,
@@ -637,7 +640,7 @@ def load_ttest(
     return data[key]
 
 
-# @st.cache(ttl=3600 * 24)
+@st.cache(ttl=3600 * 24)
 def load_player_data(date_range, agg_metric):
     date_str = date_range.replace(" ", "_")
     df = pd.read_csv(f"data/cache/player-{date_str}-{agg_metric}--grouped.csv")
@@ -666,7 +669,8 @@ def load_play_v_player_data(date_range):
         topN_player_data,
     )
 
-@st.cache(ttl=3600 * 4)
+
+@st.experimental_memo(ttl=3600 * 24)
 def load_challenge_data():
     challenges = pd.read_csv("data/NFLALLDAY_Challenges-Challenges.csv")
     datecols = ["Start Time (EDT)", "End Time (EDT)"]
@@ -676,3 +680,314 @@ def load_challenge_data():
         lambda x: ", ".join(json.loads(x))
     )
     return challenges
+
+
+@st.experimental_memo(ttl=3600 * 24)
+def load_challenge_player_data(challenge):
+    challenge_df = pd.read_csv(f"data/challenges/{challenge}.csv.gz")
+
+    challenge_data_points = len(challenge_df)
+    challenge_chart_df = challenge_df.astype(str)
+    if challenge_data_points > 10000:
+        frac = 10000 / challenge_data_points
+        weights = 1 / challenge_chart_df.groupby("Display")["Display"].transform(
+            "count"
+        )
+        challenge_chart_df = challenge_chart_df.sample(
+            frac=frac,
+            weights=weights,
+            random_state=1234,
+        )
+
+    return challenge_df, challenge_chart_df
+
+
+@st.experimental_memo(ttl=3600 * 24, suppress_st_warning=True)
+def alt_challenge_chart(challenge_chart_df, time_df, shape_col):
+    chart = (
+        alt.Chart(challenge_chart_df)
+        .mark_point(size=50, filled=True)
+        .encode(
+            x=alt.X("yearmonthdatehoursminutes(Datetime):T"),
+            y=alt.Y("Price:Q", scale=alt.Scale(type="log")),
+            color=alt.Color(
+                "Display",
+                title="Player",
+                scale=alt.Scale(
+                    scheme="category20",
+                ),
+                sort=["Other"],
+            ),
+            tooltip=[
+                alt.Tooltip("yearmonthdatehoursminutes(Datetime):T", title=None),
+                "Player",
+                alt.Tooltip("Display", title="Player Display"),
+                "Moment_Tier",
+                "marketplace_id",
+                "Serial_Number",
+                "Price:Q",
+                "Wildcard",
+            ],
+            shape=alt.Shape(
+                shape_col,
+                scale=alt.Scale(
+                    domain=[
+                        "True",
+                        "False",
+                    ],
+                    range=[
+                        "circle",
+                        "triangle",
+                    ],
+                ),
+            ),
+            href="site",
+        )
+        .interactive()
+    )
+    date_rules = (
+        alt.Chart(
+            time_df,
+        )
+        .mark_rule(strokeDash=[10, 4], opacity=0.7)
+        .encode(
+            x="yearmonthdatehoursminutes(Datetime):T",
+            tooltip=[
+                alt.Tooltip("yearmonthdatehoursminutes(Datetime):T", title="Date"),
+                alt.Tooltip("Description"),
+            ],
+            color=alt.Color("Color:N", scale=None),
+            strokeWidth=alt.value(3),
+        )
+    )
+    combined = (chart + date_rules).properties(height=600, width=800)
+    return combined
+
+
+@st.experimental_memo(ttl=3600 * 24)
+def get_challenge_summary(challenge_df, metric, summary=True):
+    sub = challenge_df[challenge_df[metric]]
+
+    if summary:
+        sub_n = len(sub)
+        sales_count = f"{sub_n}"
+        median_price = f"${sub.Price.median():.2f}"
+        floor_price = f"${sub.Price.min():.2f}"
+        return (
+            ("Total Sales Count", sales_count),
+            ("Median Price", median_price),
+            ("Floor Price", floor_price),
+        )
+    else:
+        grouped_by_nft = sub.groupby("marketplace_id").Price
+        sales_count_nft_median = f"{grouped_by_nft.count().median():.2f}"
+        mean_price_nft_median = f"${grouped_by_nft.mean().median():.2f}"
+        floor_price_nft_median = f"${grouped_by_nft.min().median():.2f}"
+
+        return (
+            ("Median Sales Count, per Moment", sales_count_nft_median),
+            ("Median Price, per Moment", mean_price_nft_median),
+            ("Median Floor Price, per Moment", floor_price_nft_median),
+        )
+
+
+def get_challenge_ttests(challenge_df, use_cache=False, update_cache=False):
+    if use_cache and not update_cache:
+        with open("data/challenge_ttests.json") as f:
+            results = json.load(f)
+            return results
+    else:
+        pre_game = challenge_df[challenge_df["pre_game_1d"]]
+        during_game = challenge_df[challenge_df["during_game"]]
+        post_game = challenge_df[challenge_df["post_game_1d"]]
+        pre_challenge = challenge_df[challenge_df["pre_challenge_1d"]]
+        during_challenge = challenge_df[challenge_df["during_challenge"]]
+        post_challenge = challenge_df[challenge_df["post_challenge_1d"]]
+
+        pre_game_group_price = pre_game.groupby("marketplace_id").Price.mean()
+        during_game_group_price = during_game.groupby("marketplace_id").Price.mean()
+        post_game_group_price = post_game.groupby("marketplace_id").Price.mean()
+        pre_challenge_group_price = pre_challenge.groupby("marketplace_id").Price.mean()
+        during_challenge_group_price = during_challenge.groupby(
+            "marketplace_id"
+        ).Price.mean()
+        post_challenge_group_price = post_challenge.groupby(
+            "marketplace_id"
+        ).Price.mean()
+
+        pre_game_group_count = pre_game.groupby("marketplace_id").Price.count()
+        during_game_group_count = during_game.groupby("marketplace_id").Price.count()
+        post_game_group_count = post_game.groupby("marketplace_id").Price.count()
+        pre_challenge_group_count = pre_challenge.groupby(
+            "marketplace_id"
+        ).Price.count()
+        during_challenge_group_count = during_challenge.groupby(
+            "marketplace_id"
+        ).Price.count()
+        post_challenge_group_count = post_challenge.groupby(
+            "marketplace_id"
+        ).Price.count()
+
+        pre_challenge_group_floor = pre_challenge.groupby("marketplace_id").Price.min()
+        during_challenge_group_floor = during_challenge.groupby(
+            "marketplace_id"
+        ).Price.min()
+        post_challenge_group_floor = post_challenge.groupby(
+            "marketplace_id"
+        ).Price.min()
+
+        Before_Game_vs_During_Game_Price = pd.concat(
+            [pre_game_group_price, during_game_group_price], axis=1
+        )
+        Before_Game_vs_During_Game_Count = pd.concat(
+            [pre_game_group_count, during_game_group_count], axis=1
+        )
+
+        During_Game_vs_During_Challenge_Price = pd.concat(
+            [during_game_group_price, during_challenge_group_price], axis=1
+        )
+        During_Game_vs_During_Challenge_Count = pd.concat(
+            [during_game_group_count, during_challenge_group_count], axis=1
+        )
+
+        During_Challenge_vs_After_Challenge_Price = pd.concat(
+            [during_challenge_group_price, post_challenge_group_price], axis=1
+        )
+        During_Challenge_vs_After_Challenge_Count = pd.concat(
+            [during_challenge_group_count, post_challenge_group_count], axis=1
+        )
+
+        Before_Game_vs_After_Game_Price = pd.concat(
+            [pre_game_group_price, post_game_group_price], axis=1
+        )
+        Before_Game_vs_After_Game_Count = pd.concat(
+            [pre_game_group_count, post_game_group_count], axis=1
+        )
+
+        Before_Challenge_vs_After_Challenge_Price = pd.concat(
+            [pre_challenge_group_price, post_challenge_group_price], axis=1
+        )
+        Before_Challenge_vs_After_Challenge_Count = pd.concat(
+            [pre_challenge_group_count, post_challenge_group_count], axis=1
+        )
+
+        Before_Challenge_vs_During_Challenge_Count = pd.concat(
+            [pre_challenge_group_count, during_challenge_group_count], axis=1
+        )
+        Before_Challenge_vs_During_Challenge_Price = pd.concat(
+            [pre_challenge_group_price, during_challenge_group_price], axis=1
+        )
+
+        Before_Challenge_vs_After_Challenge_Floor = pd.concat(
+            [pre_challenge_group_floor, post_challenge_group_floor], axis=1
+        )
+        Before_Challenge_vs_During_Challenge_Floor = pd.concat(
+            [pre_challenge_group_floor, during_challenge_group_floor], axis=1
+        )
+
+        dfs = {
+            "Before_Game_vs_During_Game_Price": Before_Game_vs_During_Game_Price,
+            "Before_Game_vs_During_Game_Count": Before_Game_vs_During_Game_Count,
+            "During_Game_vs_During_Challenge_Price": During_Game_vs_During_Challenge_Price,
+            "During_Game_vs_During_Challenge_Count": During_Game_vs_During_Challenge_Count,
+            "During_Challenge_vs_After_Challenge_Price": During_Challenge_vs_After_Challenge_Price,
+            "During_Challenge_vs_After_Challenge_Count": During_Challenge_vs_After_Challenge_Count,
+            "Before_Game_vs_After_Game_Price": Before_Game_vs_After_Game_Price,
+            "Before_Game_vs_After_Game_Count": Before_Game_vs_After_Game_Count,
+            "Before_Challenge_vs_After_Challenge_Price": Before_Challenge_vs_After_Challenge_Price,
+            "Before_Challenge_vs_After_Challenge_Count": Before_Challenge_vs_After_Challenge_Count,
+            "Before_Challenge_vs_During_Challenge_Count": Before_Challenge_vs_During_Challenge_Count,
+            "Before_Challenge_vs_During_Challenge_Price": Before_Challenge_vs_During_Challenge_Price,
+            "Before_Challenge_vs_After_Challenge_Floor": Before_Challenge_vs_After_Challenge_Floor,
+            "Before_Challenge_vs_During_Challenge_Floor": Before_Challenge_vs_During_Challenge_Floor,
+        }
+
+        results = {}
+        for k, v in dfs.items():
+            t = ttest_rel(v.iloc[:, 0], v.iloc[:, 1], nan_policy="omit")
+            results[k] = t.pvalue
+        if update_cache:
+            with open("data/challenge_ttests.json", "w") as f:
+                json.dump(results, f)
+
+    return results
+
+
+def alt_challenge_game(df, xval, yval):
+    base = alt.Chart(df)
+    chart = (
+        base.mark_point(filled=True, size=100)
+        .encode(
+            x=alt.X(
+                "jitter:Q",
+                title=None,
+                axis=alt.Axis(values=[0], ticks=True, grid=False, labels=False),
+                scale=alt.Scale(),
+            ),
+            y=alt.Y(f"{yval}:Q", scale=alt.Scale(type="log", zero=False, nice=False)),
+            tooltip=[
+                "Player:N",
+                "Team:N",
+                "Position:N",
+                "Moment_Tier:N",
+                "Price:Q",
+                "Count:Q",
+            ],
+            color=alt.Color(
+                "Display:N",
+                title="Player",
+                scale=alt.Scale(
+                    scheme="category20",
+                ),
+                sort=["Other"],
+            ),
+            shape=alt.Shape(
+                "Moment_Tier",
+                scale=alt.Scale(
+                    domain=[
+                        "True",
+                        "False",
+                    ],
+                    range=[
+                        "circle",
+                        "triangle",
+                    ],
+                ),
+            ),
+            href="site",
+        )
+        .transform_calculate(
+            # Generate Gaussian jitter with a Box-Muller transform
+            jitter="sqrt(-2*log(random()))*cos(2*PI*random())"
+        )
+        .interactive()
+        .properties(height=800, width=125)
+    )
+    box = base.mark_boxplot(color="#004D40", outliers=False, size=25).encode(
+        y=alt.Y(f"{yval}:Q"),
+    )
+    combined_chart = (
+        alt.layer(box, chart)
+        .facet(
+            column=alt.Column(
+                f"{xval}:N",
+                title=None,
+                header=alt.Header(
+                    labelAngle=-90,
+                    titleOrient="top",
+                    labelOrient="bottom",
+                    labelAlign="right",
+                    labelPadding=3,
+                ),
+                # sort=position_type_dict[position_type][1],
+            ),
+            title=f'{xval.title().replace("_", " ")}: {yval}',
+        )
+        .configure_facet(spacing=0)
+    )
+    return combined_chart
+
+
+@st.experimental_memo(ttl=3600 * 24, suppress_st_warning=True)
+def load_challenge_reward():
+    return pd.read_csv("data/NFLALLDAY_Challenges-RewardBreakdown.csv")

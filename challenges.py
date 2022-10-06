@@ -1027,16 +1027,29 @@ if __name__ == "__main__":
             pd.to_datetime(row[x].values[0]).tz_localize("US/Eastern")
             for x in ["Start Time (EDT)", "End Time (EDT)"]
         )
+        start_minus1 = start - pd.Timedelta('1d')
+        end_plus1 = end +  pd.Timedelta('1d')
 
         x["during_week"] = (x.Datetime >= week_start) & (x.Datetime < week_end)
         x["during_challenge"] = (x.Datetime >= start) & (x.Datetime < end)
-        x["post_challenge"] = x.Datetime >= end
+
         x["pre_challenge"] = x.Datetime < start
+        x["post_challenge"] = x.Datetime >= end
+   
+        x["pre_challenge_1d"] = (x.Datetime >= start_minus1) & (x.Datetime < start)   
+        x["post_challenge_1d"] = (x.Datetime > end) & (x.Datetime <= end_plus1)
+     
         try:
             game_start, game_end = game_timings[week][challenge_type]
+            pre_game_1d = game_start - pd.Timedelta('1d')
+            post_game_1d = game_end +  pd.Timedelta('1d')
             x["during_game"] = (x.Datetime >= game_start) & (x.Datetime < game_end)
+            x["pre_game_1d"] = (x.Datetime >= pre_game_1d) & (x.Datetime < game_start)
+            x["post_game_1d"] = (x.Datetime > game_end) & (x.Datetime <= post_game_1d)
         except KeyError:
             x["during_game"] = None
+            x["pre_game_1d"] = None
+            x["post_game_1d"] = None
 
         x = x[x.during_week]
         print(f"#@# {short_form} during week: {len(x)}")

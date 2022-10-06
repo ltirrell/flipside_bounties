@@ -10,23 +10,20 @@ def get_score_data(score_data, date_range):
     if date_range == "All Time":
         df = score_data
     elif date_range == "2022 Full Season":
-        df = score_data[score_data.Date >= "2022-09-07"]
+        start =  week_timings[1][0]
+        df = score_data[score_data.Date >= start]
     elif date_range == "2022 Week 1":
-        df = score_data[
-            (score_data.Date >= "2022-09-07") & (score_data.Date < "2022-09-14")
-        ]
+        start, end = week_timings[1]
+        df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
     elif date_range == "2022 Week 2":
-        df = score_data[
-            (score_data.Date >= "2022-09-14") & (score_data.Date < "2022-09-21")
-        ]
+        start, end = week_timings[2]
+        df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
     elif date_range == "2022 Week 3":
-        df = score_data[
-            (score_data.Date >= "2022-09-21") & (score_data.Date < "2022-09-28")
-        ]
+        start, end = week_timings[3]
+        df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
     elif date_range == "2022 Week 4":
-        df = score_data[
-            (score_data.Date >= "2022-09-28") & (score_data.Date < "2022-10-05")
-        ]
+        start, end = week_timings[4]
+        df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
     print(df.columns)
     grouped = df.groupby(["marketplace_id"]).agg(agg_dict).reset_index()
     grouped["Week"] = grouped.Week.astype(str)
@@ -48,23 +45,20 @@ def get_player_data(main_data, date_range, agg_metric):
     if date_range == "All Time":
         df = main_data
     elif date_range == "2022 Full Season":
-        df = main_data[main_data.Date >= "2022-09-07"]
+        start =  week_timings[1][0]
+        df = score_data[score_data.Date >= start]
     elif date_range == "2022 Week 1":
-        df = main_data[
-            (main_data.Date >= "2022-09-07") & (main_data.Date < "2022-09-14")
-        ]
+        start, end = week_timings[1]
+        df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
     elif date_range == "2022 Week 2":
-        df = main_data[
-            (main_data.Date >= "2022-09-14") & (main_data.Date < "2022-09-21")
-        ]
+        start, end = week_timings[2]
+        df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
     elif date_range == "2022 Week 3":
-        df = main_data[
-            (main_data.Date >= "2022-09-21") & (main_data.Date < "2022-09-28")
-        ]
+        start, end = week_timings[3]
+        df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
     elif date_range == "2022 Week 4":
-        df = main_data[
-            (main_data.Date >= "2022-09-21") & (main_data.Date < "2022-09-28")
-        ]
+        start, end = week_timings[4]
+        df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
 
     grouped = (
         df.groupby(["Date", "Player", "Position", "Team"])
@@ -87,13 +81,17 @@ def get_play_v_player_data(main_data, date_range):
     if date_range == "Since 2022 preseason":
         df = main_data[main_data.Date >= "2022-08-04"]
     elif date_range == "Since 2022 Week 1":
-        df = main_data[main_data.Date >= "2022-09-07"]
+        start =  week_timings[1][0]
+        df = main_data[main_data.Date >= start]
     elif date_range == "Since 2022 Week 2":
-        df = main_data[main_data.Date >= "2022-09-14"]
+        start =  week_timings[2][0]
+        df = main_data[main_data.Date >= start]
     elif date_range == "Since 2022 Week 3":
-        df = main_data[main_data.Date >= "2022-09-21"]
+        start =  week_timings[3][0]
+        df = main_data[main_data.Date >= start]
     elif date_range == "Since 2022 Week 4":
-        df = main_data[main_data.Date >= "2022-09-21"]
+        start =  week_timings[4][0]
+        df = main_data[main_data.Date >= start]
     else:
         df = main_data
 

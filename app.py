@@ -16,6 +16,7 @@ Analyzing the biggest plays and most popular players featuring in NFL All Day Mo
 """
 )
 
+
 st.header("Methods")
 with st.expander("Method details and data sources"):
     st.write(
@@ -70,10 +71,11 @@ tab1, tab2, tab3, tab4 = st.tabs(
 )
 
 with tab1:
-    st.header("Challenges")
+
+    st.header("Challenges Overview")
 
     challenges = load_challenge_data()
-
+    st.write(challenges)
     chart = (
         alt.Chart(challenges)
         .mark_bar()
@@ -107,6 +109,7 @@ with tab1:
     st.altair_chart(chart, use_container_width=True)
     weekly_df, season_df = load_stats_data(2022)
 
+    st.header("Driving downfield: price movement related to challenges")
     challenge = st.selectbox(
         "Choose a Challenge:",
         challenges.short_form.values,
@@ -127,20 +130,7 @@ with tab1:
         challenges[challenges.short_form == challenge]["End Time (EDT)"].values[0]
     ).tz_localize("US/Eastern")
 
-    challenge_df = load_challenge_player_data(challenge)
-    challenge_data_points = len(challenge_df)
-
-    challenge_chart_df = challenge_df.astype(str)
-    if challenge_data_points > 10000:
-        frac = 10000 / challenge_data_points
-        weights = 1 / challenge_chart_df.groupby("Display")["Display"].transform(
-            "count"
-        )
-        challenge_chart_df = challenge_chart_df.sample(
-            frac=frac,
-            weights=weights,
-            random_state=1234,
-        )
+    challenge_df, challenge_chart_df = load_challenge_player_data(challenge)
 
     date_dict = {
         "Datetime": [
@@ -153,7 +143,9 @@ with tab1:
     try:
         game_time = game_timings[challenge_week][challenge_type]
         date_dict["Datetime"].extend(list(game_time))
-        date_dict["Description"].extend(["Game(s) start", "Game(s) end"])
+        date_dict["Description"].extend(
+            ["Eligible Game(s) Start Time", "Eligible Game(s) End Time (approximate)"]
+        )
         date_dict["Color"].extend(["red", "red"])
     except KeyError:
         pass
@@ -167,66 +159,317 @@ with tab1:
         shape_col = "Winner"
     else:
         shape_col = "Wildcard"
-    chart = (
-        alt.Chart(challenge_chart_df)
-        .mark_point(size=50, filled=True)
-        .encode(
-            x=alt.X("yearmonthdatehoursminutes(Datetime):T"),
-            y=alt.Y("Price:Q", scale=alt.Scale(type="log")),
-            color=alt.Color(
-                "Display",
-                title="Player",
-                scale=alt.Scale(
-                    scheme="tableau20",
-                ),
-                sort=["Other"],
-            ),
-            tooltip=[
-                alt.Tooltip("yearmonthdatehoursminutes(Datetime):T", title=None),
-                "Player",
-                alt.Tooltip("Display", title="Player Display"),
-                "Moment_Tier",
-                "marketplace_id",
-                "Serial_Number",
-                "Price:Q",
-                "Wildcard",
-            ],
-            shape=alt.Shape(
-                shape_col,
-                scale=alt.Scale(
-                    domain=[
-                        "True",
-                        "False",
-                    ],
-                    range=[
-                        "circle",
-                        "triangle",
-                    ],
-                ),
-            ),
-            href="site",
-        )
-        .interactive()
-    )
-    date_rules = (
-        alt.Chart(
-            time_df,
-        )
-        .mark_rule(strokeDash=[10, 4], opacity=0.7)
-        .encode(
-            x="yearmonthdatehoursminutes(Datetime):T",
-            tooltip=[
-                alt.Tooltip("yearmonthdatehoursminutes(Datetime):T", title="Date"),
-                alt.Tooltip("Description"),
-            ],
-            color=alt.Color("Color:N", scale=None),
-            strokeWidth=alt.value(3),
-        )
-    )
-    combined = (chart + date_rules).properties(height=500, width=800)
-    # except KeyError:
-    #     combined = chart.properties(height=500, width=800)
+
+    combined = alt_challenge_chart(challenge_chart_df, time_df, shape_col)
     c2.altair_chart(combined, use_container_width=True)
+
+    cols = st.columns(6)
+    metric_data = {}
+    for i, x in enumerate(
+        [
+            "pre_game_1d",
+            "during_game",
+            "post_game_1d",
+            "during_challenge",
+            "pre_challenge_1d",
+            "post_challenge_1d",
+            # "during_week",
+            # "pre_challenge",
+            # "post_challenge",
+        ]
+    ):
+        c = cols[i]
+        try:
+            c.subheader(x.title().replace("_", " "))
+            c.caption("Overall")
+            metrics = get_challenge_summary(
+                challenge_df,
+                x,
+            )
+            for label, val in metrics:
+                c.metric(label, val)
+            c.caption("Per Unique Moment")
+            metrics = get_challenge_summary(challenge_df, x, summary=False)
+            for label, val in metrics:
+                c.metric(label, val)
+                metric_data[f"{x}-{label}"] = val
+        except KeyError:
+            pass
+
+    st.subheader("Pregame warmup vs postgame cooldown")
+
+    c1, c2, c3 = st.columns([1, 2, 2])
+    metric = c1.radio("Choose a metric:", ["Price", "Count"], key="game_radio")
+    grouped_game = (
+        challenge_df.groupby(
+            [
+                "marketplace_id",
+                "Player",
+                "Position",
+                "Team",
+                "Moment_Tier",
+                "site",
+                "Display",
+                "during_game",
+            ]
+        )
+        .agg(Price=("Price", "mean"), Count=("Price", "count"))
+        .reset_index()
+    )
+    grouped_challenge = (
+        challenge_df.groupby(
+            [
+                "marketplace_id",
+                "Player",
+                "Position",
+                "Team",
+                "Moment_Tier",
+                "site",
+                "Display",
+                "during_challenge",
+            ]
+        )
+        .agg(Price=("Price", "mean"), Count=("Price", "count"))
+        .reset_index()
+    )
+    game_chart = alt_challenge_game(grouped_game, "during_game", metric)
+    challenge_chart = alt_challenge_game(grouped_challenge, "during_challenge", metric)
+
+    c2.altair_chart(game_chart, use_container_width=True)
+    c3.altair_chart(challenge_chart, use_container_width=True)
+
+    results = get_challenge_ttests(challenge_df, use_cache=True)
+    alpha = 0.05 / 4  # Bonferroni correction for 4 tests
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.subheader(
+        "Are people  transacting more moments before games, or throughout games?"
+    )
+    k_price = "Before_Game_vs_During_Game_Price"
+    v_price = results[k_price]
+    sig = v_price < alpha
+    delta_str = "+ Yes" if sig else "- No difference"
+    delta_str += f": {metric_data['pre_game_1d-Median Price, per Moment']} vs {metric_data['during_game-Median Price, per Moment']}"
+    c1.metric(k_price.replace("_", " "), f"{v_price:.3f}", delta_str)
+    k_count = "Before_Game_vs_During_Game_Count"
+    v_count = results[k_count]
+    sig = v_count < alpha
+    delta_str = "+ Yes" if sig else "- No difference"
+    delta_str += f": {metric_data['pre_game_1d-Median Sales Count, per Moment']} vs {metric_data['during_game-Median Sales Count, per Moment']}"
+    c1.metric(k_count.replace("_", " "), f"{v_count:.3f}", delta_str)
+
+    c2.subheader(
+        "Are people transacting more moments during games, or during challenges?"
+    )
+    k_price = "During_Game_vs_During_Challenge_Price"
+    v_price = results[k_price]
+    sig = v_price < alpha
+    delta_str = "+ Yes" if sig else "- No difference"
+    delta_str += f": {metric_data['during_game-Median Price, per Moment']} vs {metric_data['during_challenge-Median Price, per Moment']}"
+    c2.metric(k_price.replace("_", " "), f"{v_price:.3f}", delta_str)
+    k_count = "During_Game_vs_During_Challenge_Count"
+    v_count = results[k_count]
+    sig = v_count < alpha
+    delta_str = "+ Yes" if sig else "- No difference"
+    delta_str += f": {metric_data['during_game-Median Sales Count, per Moment']} vs {metric_data['during_challenge-Median Sales Count, per Moment']}"
+    c2.metric(k_count.replace("_", " "), f"{v_count:.3f}", delta_str)
+
+    c3.subheader(
+        "Are people transacting more moments during challenges, or after challenges?"
+    )
+    k_price = "During_Challenge_vs_After_Challenge_Price"
+    v_price = results[k_price]
+    sig = v_price < alpha
+    delta_str = "+ Yes" if sig else "- No difference"
+    delta_str += f": {metric_data['during_challenge-Median Price, per Moment']} vs {metric_data['post_challenge_1d-Median Price, per Moment']}"
+    c3.metric(k_price.replace("_", " "), f"{v_price:.3f}", delta_str)
+    k_count = "During_Challenge_vs_After_Challenge_Count"
+    v_count = results[k_count]
+    sig = v_count < alpha
+    delta_str = "+ Yes" if sig else "- No difference"
+    delta_str += f": {metric_data['during_challenge-Median Sales Count, per Moment']} vs {metric_data['post_challenge_1d-Median Sales Count, per Moment']}"
+    c3.metric(k_count.replace("_", " "), f"{v_count:.3f}", delta_str)
+
+    c4.subheader(
+        "Does floor price change after or during a challenge compared to before a challenge?"
+    )
+    k_price = "Before_Challenge_vs_After_Challenge_Floor"
+    v_price = results[k_price]
+    sig = v_price < alpha
+    delta_str = "+ Yes" if sig else "- No difference"
+    delta_str += f": {metric_data['pre_challenge_1d-Median Floor Price, per Moment']} vs {metric_data['post_challenge_1d-Median Floor Price, per Moment']}"
+    c4.metric(k_price.replace("_", " "), f"{v_price:.3f}", delta_str)
+    k_count = "Before_Challenge_vs_During_Challenge_Floor"
+    v_count = results[k_count]
+    sig = v_count < alpha
+    delta_str = "+ Yes" if sig else "- No difference"
+    delta_str += f": {metric_data['pre_challenge_1d-Median Floor Price, per Moment']} vs {metric_data['during_challenge-Median Floor Price, per Moment']}"
+    c4.metric(k_count.replace("_", " "), f"{v_count:.3f}", delta_str)
+
+    ###
+    st.header("Hail Mary? Value proposition of completing challenges")
+
+    if challenge_week == 4:
+        st.write(
+            "Data currently unavailable for Week 4, choose another challenge above"
+        )
+    else:
+        df = load_score_data(
+            f"2022 Week {challenge_week}", "Best Guess (Moment TD)", "All"
+        )
+        reward_df = load_challenge_reward()
+        floor_price = df.Price.min()
+
+        st.subheader("Reward breakdown")
+        reward_weekly = reward_df[reward_df.Week == challenge_week]
+
+        rare1 = reward_weekly.loc[
+            reward_weekly.Reward_Star == 1, "Rare Proportion"
+        ].values[0]
+        rare2 = reward_weekly.loc[
+            reward_weekly.Reward_Star == 2, "Rare Proportion"
+        ].values[0]
+        rare3 = reward_weekly.loc[
+            reward_weekly.Reward_Star == 3, "Rare Proportion"
+        ].values[0]
+        rare4 = reward_weekly.loc[
+            reward_weekly.Reward_Star == 4, "Rare Proportion"
+        ].values[0]
+        rare5 = reward_weekly.loc[
+            reward_weekly.Reward_Star == 5, "Rare Proportion"
+        ].values[0]
+        legendary1 = reward_weekly.loc[
+            reward_weekly.Reward_Star == 1, "Legendary Proportion"
+        ].values[0]
+        legendary2 = reward_weekly.loc[
+            reward_weekly.Reward_Star == 2, "Legendary Proportion"
+        ].values[0]
+        legendary3 = reward_weekly.loc[
+            reward_weekly.Reward_Star == 3, "Legendary Proportion"
+        ].values[0]
+        legendary4 = reward_weekly.loc[
+            reward_weekly.Reward_Star == 4, "Legendary Proportion"
+        ].values[0]
+        legendary5 = reward_weekly.loc[
+            reward_weekly.Reward_Star == 5, "Legendary Proportion"
+        ].values[0]
+
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.subheader("⭐ Packs")
+        c2.subheader("⭐⭐ Packs")
+        c3.subheader("⭐⭐⭐ Packs")
+        c4.subheader("⭐⭐⭐⭐ Packs")
+        c5.subheader("⭐⭐⭐⭐⭐ Packs")
+        c1.metric(
+            "Packs rewarded:",
+            reward_weekly.loc[reward_weekly.Reward_Star == 1, "Packs_Total"].values[0],
+        )
+        c2.metric(
+            "Packs rewarded:",
+            reward_weekly.loc[reward_weekly.Reward_Star == 2, "Packs_Total"].values[0],
+        )
+        c3.metric(
+            "Packs rewarded:",
+            reward_weekly.loc[reward_weekly.Reward_Star == 3, "Packs_Total"].values[0],
+        )
+        c4.metric(
+            "Packs rewarded:",
+            reward_weekly.loc[reward_weekly.Reward_Star == 4, "Packs_Total"].values[0],
+        )
+        c5.metric(
+            "Packs rewarded:",
+            reward_weekly.loc[reward_weekly.Reward_Star == 5, "Packs_Total"].values[0],
+        )
+
+        c1.metric("Proportion Rare:", f"{rare1:.2%}")
+        c2.metric("Proportion Rare:", f"{rare2:.2%}")
+        c3.metric("Proportion Rare:", f"{rare3:.2%}")
+        c4.metric("Proportion Rare:", f"{rare4:.2%}")
+        c5.metric("Proportion Rare:", f"{rare5:.2%}")
+
+        c1.metric("Proportion Legendary:", f"{legendary1:.2%}")
+        c2.metric("Proportion Legendary:", f"{legendary2:.2%}")
+        c3.metric("Proportion Legendary:", f"{legendary3:.2%}")
+        c4.metric("Proportion Legendary:", f"{legendary4:.2%}")
+        c5.metric("Proportion Legendary:", f"{legendary5:.2%}")
+
+        c1.metric(
+            "Moments Rewarded (1 Common):",
+            f'{reward_weekly.loc[reward_weekly.Reward_Star==1, "Num Moments"].values[0]}',
+        )
+        c2.metric(
+            "Moments Rewarded: (2 Common)",
+            f'{reward_weekly.loc[reward_weekly.Reward_Star==2, "Num Moments"].values[0]}',
+        )
+        c3.metric(
+            "Moments Rewarded (2 or 3 Common):",
+            f'{reward_weekly.loc[reward_weekly.Reward_Star==3, "Num Moments"].values[0]}',
+        )
+        c4.metric(
+            "Moments Rewarded (2 or 3 Common):",
+            f'{reward_weekly.loc[reward_weekly.Reward_Star==4, "Num Moments"].values[0]}',
+        )
+        c5.metric(
+            "Moments Rewarded (2 Common):",
+            f'{reward_weekly.loc[reward_weekly.Reward_Star==5, "Num Moments"].values[0]}',
+        )
+
+        st.subheader("Sales Price Breakdown")
+        c1, c2, c3 = st.columns(3)
+        c1.metric(
+            f"Floor price (average, Week {challenge_week})", f"${floor_price:.2f}"
+        )
+        c2.metric("Number of burns required for Playbook payouts", 5)
+        c3.metric("Total cost for eligibilty", f"${floor_price * 5:.2f}")
+
+        price_df = df.copy()
+        price_df = price_df[price_df.Series != "Historical"]
+        price_df["core"] = False
+        price_df.loc[
+            price_df.Set_Name.isin(
+                [
+                    "Base",
+                    "Locked In",
+                    "Iconic",
+                ]
+            ),
+            "core",
+        ] = True
+        grouped_price_df = (
+            price_df.groupby(["Moment_Tier", "Rarity", "core"])
+            .Price.mean()
+            .reset_index()
+            .sort_values(by=["Rarity", "core"])[["Moment_Tier", "core", "Price"]]
+        )
+        c1.write("Average price by Tier and Set Type")
+        c1.write(grouped_price_df)
+        nstars=c2.selectbox(
+            "Choose number of stars:",
+            ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"],
+            key="star_select",
+        )
+        estimation_method=c2.radio(
+            "Choose estimation method",
+            ["Average Price", "Random sampling"],
+            key="star_method",
+        )
+
+        star_dict = {
+            "⭐": {"COMMON": 1, "RARE": 0, "LEGENDARY": 0},
+            "⭐⭐": {"COMMON": 2+1, "RARE": 0, "LEGENDARY": 0},
+            "⭐⭐⭐": {"COMMON": 2+(1-rare3)+2+1, "RARE": rare3, "LEGENDARY": 0},
+            "⭐⭐⭐⭐": {"COMMON": 2+(1-rare4)+2+(1-rare3)+2+1, "RARE": rare4+rare3, "LEGENDARY": 0},
+            "⭐⭐⭐⭐⭐": {"COMMON": 2+2+(1-rare4)+2+(1-rare3)+2+1, "RARE": rare5+rare4+rare3, "LEGENDARY": legendary5},
+        }
+
+        if estimation_method=="Average Price":
+            for k, v in star_dict[nstars].items():
+                ...
+        else:
+            c3.text("Not imlemented yet, try Average price")
+
+
+
 
 with tab2:
     st.header("Two minute Drill: What drives Moment price?")
@@ -248,230 +491,173 @@ with tab2:
     Explore for yourself to see the various differences!
         """
     )
+    if st.checkbox("Load Section?", key="load_tab2"):
+        c1, c2, c3, c4, c5, c6 = st.columns(6)
+        date_range = c1.selectbox(
+            "Date range:",
+            main_date_ranges,
+            key="date_scores",
+        )
+        play_type = c2.selectbox(
+            "Play Types",
+            ["All"] + score_columns,
+            key="play_types_scores",
+        )
+        how_scores = c3.selectbox(
+            "Method",
+            td_mapping.values(),
+            key="how_scores",
+        )
+        position_type = c4.radio(
+            "Position Type",
+            position_type_dict.keys(),
+            key="position_type",
+        )
+        metric = c5.radio(
+            "Game Metric",
+            ["Touchdown", "Game Outcome", "Both"],
+            2,
+            key="metric_scores",
+        )
+        agg_metric = c6.radio(
+            "Aggregation Metric",
+            ["Average Sales Price ($)", "Sales Count"],
+            key="agg_metric_scores",
+        )
 
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    date_range = c1.selectbox(
-        "Date range:",
-        main_date_ranges,
-        key="date_scores",
-    )
-    play_type = c2.selectbox(
-        "Play Types",
-        ["All"] + score_columns,
-        key="play_types_scores",
-    )
-    how_scores = c3.selectbox(
-        "Method",
-        td_mapping.values(),
-        key="how_scores",
-    )
-    position_type = c4.radio(
-        "Position Type",
-        position_type_dict.keys(),
-        key="position_type",
-    )
-    metric = c5.radio(
-        "Game Metric",
-        ["Touchdown", "Game Outcome", "Both"],
-        2,
-        key="metric_scores",
-    )
-    agg_metric = c6.radio(
-        "Aggregation Metric",
-        ["Average Sales Price ($)", "Sales Count"],
-        key="agg_metric_scores",
-    )
+        grouped = load_score_data(date_range, how_scores, play_type)
+        select = alt.selection_single(on="mouseover")
+        base = alt.Chart(grouped)
+        chart = (
+            base.mark_point(size=110, filled=True)
+            .encode(
+                x=alt.X(
+                    "jitter:Q",
+                    title=None,
+                    axis=alt.Axis(values=[0], ticks=True, grid=False, labels=False),
+                    scale=alt.Scale(),
+                ),
+                y=alt.Y(
+                    "Price" if agg_metric == "Average Sales Price ($)" else "tx_id",
+                    title=agg_metric,
+                    scale=alt.Scale(
+                        type="log",
+                        zero=False,
+                    ),
+                ),
+                color=alt.Color(
+                    "Game Outcome" if metric == "Game Outcome" else "Scored Touchdown?",
+                    scale=alt.Scale(
+                        domain=["Win", "Loss", "Tie"]
+                        if metric == "Game Outcome"
+                        else [True, False, None],
+                        range=["#1E88E5", "#D81B60", "#FFC107"],
+                    ),
+                ),
+                shape=alt.value("circle")
+                if metric != "Both"
+                else alt.Shape(
+                    "Game Outcome",
+                    scale=alt.Scale(
+                        domain=["Win", "Loss", "Tie"],
+                        range=["circle", "triangle", "diamond"],
+                    ),
+                ),
+                opacity=alt.condition(select, alt.value(1), alt.value(0.3)),
+                tooltip=[
+                    # alt.Tooltip("yearmonthdate(Date)", title="Date"),
+                    alt.Tooltip("Player"),
+                    alt.Tooltip("Position"),
+                    alt.Tooltip("Team"),
+                    alt.Tooltip("yearmonthdate(Moment_Date)", title="Game Date"),
+                    alt.Tooltip("Moment_Tier", title="Rarity"),
+                    alt.Tooltip("Total_Circulation", title="NFT Total Supply"),
+                    # alt.Tooltip("Moment_Description", title="Description", band=1),
+                    alt.Tooltip("Game Outcome"),
+                    alt.Tooltip("Scored Touchdown?"),
+                    alt.Tooltip("Price", title="Average Sales Price ($)", format=".2f"),
+                    alt.Tooltip(
+                        "tx_id",
+                        title="Sales count",
+                    ),
+                ],
+                href="site",
+            )
+            .transform_calculate(
+                # Generate Gaussian jitter with a Box-Muller transform
+                jitter="sqrt(-2*log(random()))*cos(2*PI*random())"
+            )
+            .interactive()
+            .properties(height=800, width=125)
+            .add_selection(select)
+        )
 
-    grouped = load_score_data(date_range, how_scores, play_type)
-    select = alt.selection_single(on="mouseover")
-    base = alt.Chart(grouped)
-    chart = (
-        base.mark_point(size=110, filled=True)
-        .encode(
-            x=alt.X(
-                "jitter:Q",
-                title=None,
-                axis=alt.Axis(values=[0], ticks=True, grid=False, labels=False),
-                scale=alt.Scale(),
-            ),
+        box = base.mark_boxplot(color="#004D40", outliers=False, size=25).encode(
             y=alt.Y(
                 "Price" if agg_metric == "Average Sales Price ($)" else "tx_id",
                 title=agg_metric,
-                scale=alt.Scale(
-                    type="log",
-                    zero=False,
-                ),
             ),
-            color=alt.Color(
-                "Game Outcome" if metric == "Game Outcome" else "Scored Touchdown?",
-                scale=alt.Scale(
-                    domain=["Win", "Loss", "Tie"]
-                    if metric == "Game Outcome"
-                    else [True, False, None],
-                    range=["#1E88E5", "#D81B60", "#FFC107"],
+        )
+        combined_chart = (
+            alt.layer(box, chart)
+            .facet(
+                column=alt.Column(
+                    position_type_dict[position_type][0],
+                    title=None,
+                    header=alt.Header(
+                        labelAngle=-90,
+                        titleOrient="top",
+                        labelOrient="bottom",
+                        labelAlign="right",
+                        labelPadding=3,
+                    ),
+                    sort=position_type_dict[position_type][1],
                 ),
-            ),
-            shape=alt.value("circle")
-            if metric != "Both"
-            else alt.Shape(
-                "Game Outcome",
-                scale=alt.Scale(
-                    domain=["Win", "Loss", "Tie"],
-                    range=["circle", "triangle", "diamond"],
-                ),
-            ),
-            opacity=alt.condition(select, alt.value(1), alt.value(0.3)),
-            tooltip=[
-                # alt.Tooltip("yearmonthdate(Date)", title="Date"),
-                alt.Tooltip("Player"),
-                alt.Tooltip("Position"),
-                alt.Tooltip("Team"),
-                alt.Tooltip("yearmonthdate(Moment_Date)", title="Game Date"),
-                alt.Tooltip("Moment_Tier", title="Rarity"),
-                alt.Tooltip("Total_Circulation", title="NFT Total Supply"),
-                # alt.Tooltip("Moment_Description", title="Description", band=1),
-                alt.Tooltip("Game Outcome"),
-                alt.Tooltip("Scored Touchdown?"),
-                alt.Tooltip("Price", title="Average Sales Price ($)", format=".2f"),
-                alt.Tooltip(
-                    "tx_id",
-                    title="Sales count",
-                ),
-            ],
-            href="site",
-        )
-        .transform_calculate(
-            # Generate Gaussian jitter with a Box-Muller transform
-            jitter="sqrt(-2*log(random()))*cos(2*PI*random())"
-        )
-        .interactive()
-        .properties(height=800, width=125)
-        .add_selection(select)
-    )
-
-    box = base.mark_boxplot(color="#004D40", outliers=False, size=25).encode(
-        y=alt.Y(
-            "Price" if agg_metric == "Average Sales Price ($)" else "tx_id",
-            title=agg_metric,
-        ),
-    )
-    combined_chart = (
-        alt.layer(box, chart)
-        .facet(
-            column=alt.Column(
-                position_type_dict[position_type][0],
-                title=None,
-                header=alt.Header(
-                    labelAngle=-90,
-                    titleOrient="top",
-                    labelOrient="bottom",
-                    labelAlign="right",
-                    labelPadding=3,
-                ),
-                sort=position_type_dict[position_type][1],
-            ),
-            title=f"Play Types: {play_type}",
-        )
-        .configure_facet(spacing=0)
-    )
-
-    st.altair_chart(combined_chart)
-    st.write(
-        f"""
-    To statistically determine how price is related to these factors, we modeled the relationship between Price vs Play Type, Position of the Player, Rarity of the NFT, Game outcome (whether the NFT is for a winning team), and whether the NFT shows a TD score(see [Methods](#methods) for details). When looking at the entire dataset, the only factor which significantly affects price is **Rarity**.
-    This is quite clear if viewing the `By Rarity Chart`; there is a clear separation of groups by the level.
-
-    Other factors, such as TD scoring vs non TD scoring Moments, show some clear differences (see below), but these are not sufficient to fully explain the data and predict price.
-        """
-    )
-    if position_type == "By Position":
-        pos_subset = [
-            x for x in positions if x in ["All"] + grouped.Position.unique().tolist()
-        ]
-        pos_column = position_type_dict[position_type][0]
-    else:
-        pos_subset = position_type_dict[position_type][1]
-        pos_column = position_type_dict[position_type][0]
-
-    ncols = len(pos_subset) if len(pos_subset) < 5 else 5
-
-    st.subheader("Score for more?")
-    st.write("**Are TD scores more sought after?**")
-    st.write(
-        f"""
-    The price of TD scoring vs non-TD scoring Moments for each Position/Position Group/Rarity Level is shown. Any signifcant differences are marked. The percentage of TD scoring moments is shown in parentheses.
-        """
-    )
-    cols = st.columns(ncols)
-    tds_ttests = load_ttest(
-        date_range,
-        play_type,
-        how_scores,
-        agg_metric,
-        position_type,
-        how_scores,
-        "TDs",
-    )
-    for i, x in enumerate(tds_ttests):
-        position_info, comparison, sig = x
-        cols[i % len(cols)].metric(
-            position_info,
-            comparison,
-            sig,
+                title=f"Play Types: {play_type}",
+            )
+            .configure_facet(spacing=0)
         )
 
-    st.subheader("Winner's circle")
-    st.write("**Are game winning players traded more?**")
-    st.write(
-        f"""
-    The price of Game Winners vs Game Losing Moments for each Position/Position Group/Rarity Level is shown. Any signifcant differences are marked. The percentage of Game Winners moments is shown in parentheses.
-        """
-    )
-    cols = st.columns(ncols)
-    winners_ttests = load_ttest(
-        date_range,
-        play_type,
-        how_scores,
-        agg_metric,
-        position_type,
-        "won_game",
-        "Winners",
-    )
-    for i, x in enumerate(winners_ttests):
-        position_info, comparison, sig = x
-        cols[i % len(cols)].metric(
-            position_info,
-            comparison,
-            sig,
-        )
-
-    st.subheader("Coach's challenge")
-    st.write("**If TDs are defined differently, does that lead to different results?**")
-    st.write(
-        f"""
-    For reference, a comparison between the `Best Guess` and `Description Only` methods for TD determination is shown in the box below.
-        """
-    )
-    with st.expander("Comparison"):
+        st.altair_chart(combined_chart)
         st.write(
             f"""
-        There is generally a significant difference between the price of TD-scoring momemnts based on the method used. 
-        The number in parentheses is the ratio of  Best Guess TD Moments to Description TD Moments (so `1.19 BG: Desc` means there are 1.19 times more Moments labeled as TD scoring using the Best guess method) 
+        To statistically determine how price is related to these factors, we modeled the relationship between Price vs Play Type, Position of the Player, Rarity of the NFT, Game outcome (whether the NFT is for a winning team), and whether the NFT shows a TD score(see [Methods](#methods) for details). When looking at the entire dataset, the only factor which significantly affects price is **Rarity**.
+        This is quite clear if viewing the `By Rarity Chart`; there is a clear separation of groups by the level.
+
+        Other factors, such as TD scoring vs non TD scoring Moments, show some clear differences (see below), but these are not sufficient to fully explain the data and predict price.
             """
         )
-        st.subheader("TD in moment")
+        if position_type == "By Position":
+            pos_subset = [
+                x
+                for x in positions
+                if x in ["All"] + grouped.Position.unique().tolist()
+            ]
+            pos_column = position_type_dict[position_type][0]
+        else:
+            pos_subset = position_type_dict[position_type][1]
+            pos_column = position_type_dict[position_type][0]
+
+        ncols = len(pos_subset) if len(pos_subset) < 5 else 5
+
+        st.subheader("Score for more?")
+        st.write("**Are TD scores more sought after?**")
+        st.write(
+            f"""
+        The price of TD scoring vs non-TD scoring Moments for each Position/Position Group/Rarity Level is shown. Any signifcant differences are marked. The percentage of TD scoring moments is shown in parentheses.
+            """
+        )
         cols = st.columns(ncols)
-        moment_best_guess_ttests = load_ttest(
+        tds_ttests = load_ttest(
             date_range,
             play_type,
             how_scores,
             agg_metric,
             position_type,
-            ["Best Guess (Moment TD)", "Description only (Moment TD)"],
-            "Best Guess Moment",
+            how_scores,
+            "TDs",
         )
-
-        for i, x in enumerate(moment_best_guess_ttests):
+        for i, x in enumerate(tds_ttests):
             position_info, comparison, sig = x
             cols[i % len(cols)].metric(
                 position_info,
@@ -479,24 +665,85 @@ with tab2:
                 sig,
             )
 
-        st.subheader("TD in Game")
+        st.subheader("Winner's circle")
+        st.write("**Are game winning players traded more?**")
+        st.write(
+            f"""
+        The price of Game Winners vs Game Losing Moments for each Position/Position Group/Rarity Level is shown. Any signifcant differences are marked. The percentage of Game Winners moments is shown in parentheses.
+            """
+        )
         cols = st.columns(ncols)
-        game_best_guess_ttests = load_ttest(
+        winners_ttests = load_ttest(
             date_range,
             play_type,
             how_scores,
             agg_metric,
             position_type,
-            ["Best Guess: (In-game TD)", "Description only (Moment TD)"],
-            "Best Guess Game",
+            "won_game",
+            "Winners",
         )
-        for i, x in enumerate(game_best_guess_ttests):
+        for i, x in enumerate(winners_ttests):
             position_info, comparison, sig = x
             cols[i % len(cols)].metric(
                 position_info,
                 comparison,
                 sig,
             )
+
+        st.subheader("Coach's challenge")
+        st.write(
+            "**If TDs are defined differently, does that lead to different results?**"
+        )
+        st.write(
+            f"""
+        For reference, a comparison between the `Best Guess` and `Description Only` methods for TD determination is shown in the box below.
+            """
+        )
+        with st.expander("Comparison"):
+            st.write(
+                f"""
+            There is generally a significant difference between the price of TD-scoring momemnts based on the method used. 
+            The number in parentheses is the ratio of  Best Guess TD Moments to Description TD Moments (so `1.19 BG: Desc` means there are 1.19 times more Moments labeled as TD scoring using the Best guess method) 
+                """
+            )
+            st.subheader("TD in moment")
+            cols = st.columns(ncols)
+            moment_best_guess_ttests = load_ttest(
+                date_range,
+                play_type,
+                how_scores,
+                agg_metric,
+                position_type,
+                ["Best Guess (Moment TD)", "Description only (Moment TD)"],
+                "Best Guess Moment",
+            )
+
+            for i, x in enumerate(moment_best_guess_ttests):
+                position_info, comparison, sig = x
+                cols[i % len(cols)].metric(
+                    position_info,
+                    comparison,
+                    sig,
+                )
+
+            st.subheader("TD in Game")
+            cols = st.columns(ncols)
+            game_best_guess_ttests = load_ttest(
+                date_range,
+                play_type,
+                how_scores,
+                agg_metric,
+                position_type,
+                ["Best Guess: (In-game TD)", "Description only (Moment TD)"],
+                "Best Guess Game",
+            )
+            for i, x in enumerate(game_best_guess_ttests):
+                position_info, comparison, sig = x
+                cols[i % len(cols)].metric(
+                    position_info,
+                    comparison,
+                    sig,
+                )
 
 with tab3:
     st.header("All Day Purchases based on recent Player performance")
@@ -515,229 +762,236 @@ with tab3:
     `Ctrl-Click`ing a circle will open the video of the first Moment sold for that player on that day.
     """
     )
-    c1, c2, c3, c4, c5 = st.columns(5)
-    date_range = c1.radio(
-        "Date range:",
-        stats_date_ranges,
-        key="radio_stats",
-    )
-    position = c2.selectbox("Player Position", ["All", "QB", "RB", "WR", "TE"])
-    metric = c3.selectbox(
-        "Metric for top players:",
-        [
-            "fantasy_points_ppr",
-            "passing_tds",
-            "passing_yards",
-            "receiving_tds",
-            "receiving_yards",
-            "rushing_tds",
-            "rushing_yards",
-        ],
-        format_func=lambda x: x.replace("_", " ").title(),
-        key="select_stats",
-    )
-    num_players = c4.slider("Number of top players:", 1, 32, 7, key="slider_stats")
-    agg_metric = c5.radio(
-        "Aggregation metric",
-        ["median", "mean", "count"],
-        format_func=lambda x: f"{x.title()} Price" if x != "count" else "Sales Count",
-        key="radio_stats2",
-    )
-
-    weekly_df_2022, season_df_2022 = load_stats_data(years=2022)
-    # #TODO: clean up date ranges
-    if date_range == "2022 Full Season":
-        stats_df = season_df_2022
-    elif date_range == "2022 Week 1":
-        stats_df = weekly_df_2022[weekly_df_2022.week == 1]
-    elif date_range == "2022 Week 2":
-        stats_df = weekly_df_2022[weekly_df_2022.week == 2]
-    elif date_range == "2022 Week 3":
-        stats_df = weekly_df_2022[weekly_df_2022.week == 3]
-    elif date_range == "2022 Week 4":
-        stats_df = weekly_df_2022[weekly_df_2022.week == 4]
-
-    if position == "All":
-        stats_df = stats_df.sort_values(by=metric, ascending=False).reset_index(
-            drop=True
+    if st.checkbox("Load Section?", key="load_tab3"):
+        c1, c2, c3, c4, c5 = st.columns(5)
+        date_range = c1.radio(
+            "Date range:",
+            stats_date_ranges,
+            key="radio_stats",
         )
-    else:
-        stats_df = (
-            stats_df[stats_df["position"] == position]
-            .sort_values(by=metric, ascending=False)
-            .reset_index(drop=True)
+        position = c2.selectbox("Player Position", ["All", "QB", "RB", "WR", "TE"])
+        metric = c3.selectbox(
+            "Metric for top players:",
+            [
+                "fantasy_points_ppr",
+                "passing_tds",
+                "passing_yards",
+                "receiving_tds",
+                "receiving_yards",
+                "rushing_tds",
+                "rushing_yards",
+            ],
+            format_func=lambda x: x.replace("_", " ").title(),
+            key="select_stats",
         )
-    df = load_player_data(date_range, agg_metric)
+        num_players = c4.slider("Number of top players:", 1, 32, 7, key="slider_stats")
+        agg_metric = c5.radio(
+            "Aggregation metric",
+            ["median", "mean", "count"],
+            format_func=lambda x: f"{x.title()} Price"
+            if x != "count"
+            else "Sales Count",
+            key="radio_stats2",
+        )
 
-    top_players = stats_df.iloc[:num_players]
-    player_display = top_players[
-        ["player_display_name", "position", "team", metric]
-    ].rename(
-        columns={
-            "player_display_name": "Player",
-            "position": "Position",
-            "team": "Team",
-            metric: metric.replace("_", " ").title(),
-        }
-    )
+        weekly_df_2022, season_df_2022 = load_stats_data(years=2022)
+        # #TODO: clean up date ranges
+        if date_range == "2022 Full Season":
+            stats_df = season_df_2022
+        elif date_range == "2022 Week 1":
+            stats_df = weekly_df_2022[weekly_df_2022.week == 1]
+        elif date_range == "2022 Week 2":
+            stats_df = weekly_df_2022[weekly_df_2022.week == 2]
+        elif date_range == "2022 Week 3":
+            stats_df = weekly_df_2022[weekly_df_2022.week == 3]
+        elif date_range == "2022 Week 4":
+            stats_df = weekly_df_2022[weekly_df_2022.week == 4]
 
-    grouped = (
-        df.groupby(["Date", "Player", "Position", "Team"])
-        .Price.agg(agg_metric)
-        .reset_index()
-    )
-    video_url = (
-        df.groupby(["Date", "Player", "Position", "Team"])
-        .NFLALLDAY_ASSETS_URL.first()
-        .reset_index()
-    )
-    grouped = grouped.merge(video_url, on=["Date", "Player", "Position", "Team"])
-    grouped["Date"] = pd.to_datetime(grouped["Date"])
-    # grouped["Date"] = grouped.Date.dt.tz_localize("US/Pacific")
-    # players = top_players[["player_display_name", "position"]]
-    grouped["Top_Player"] = grouped.apply(
-        lambda x: True
-        if x.Player in top_players.player_display_name.values
-        and x.Position
-        in top_players.position.values  # HACK gets rid of the LB named Josh Allen
-        else False,
-        axis=1,
-    )
+        if position == "All":
+            stats_df = stats_df.sort_values(by=metric, ascending=False).reset_index(
+                drop=True
+            )
+        else:
+            stats_df = (
+                stats_df[stats_df["position"] == position]
+                .sort_values(by=metric, ascending=False)
+                .reset_index(drop=True)
+            )
+        df = load_player_data(date_range, agg_metric)
 
-    if position == "All":
-        top_price = grouped[grouped.Top_Player]
-        others = grouped[~grouped.Top_Player]
-    else:
-        top_price = grouped[(grouped["Position"] == position) & (grouped.Top_Player)]
-        others = grouped[(grouped["Position"] == position) & (~grouped.Top_Player)]
+        top_players = stats_df.iloc[:num_players]
+        player_display = top_players[
+            ["player_display_name", "position", "team", metric]
+        ].rename(
+            columns={
+                "player_display_name": "Player",
+                "position": "Position",
+                "team": "Team",
+                metric: metric.replace("_", " ").title(),
+            }
+        )
 
-    if agg_metric == "count":
-        ytitle = "Sales Count"
-    elif agg_metric == "mean":
-        ytitle = "Mean Sale Price ($)"
-    elif agg_metric == "median":
-        ytitle = "Median Sale Price ($)"
+        grouped = (
+            df.groupby(["Date", "Player", "Position", "Team"])
+            .Price.agg(agg_metric)
+            .reset_index()
+        )
+        video_url = (
+            df.groupby(["Date", "Player", "Position", "Team"])
+            .NFLALLDAY_ASSETS_URL.first()
+            .reset_index()
+        )
+        grouped = grouped.merge(video_url, on=["Date", "Player", "Position", "Team"])
+        grouped["Date"] = pd.to_datetime(grouped["Date"])
+        # grouped["Date"] = grouped.Date.dt.tz_localize("US/Pacific")
+        # players = top_players[["player_display_name", "position"]]
+        grouped["Top_Player"] = grouped.apply(
+            lambda x: True
+            if x.Player in top_players.player_display_name.values
+            and x.Position
+            in top_players.position.values  # HACK gets rid of the LB named Josh Allen
+            else False,
+            axis=1,
+        )
 
-    c1, c2 = st.columns([2, 5])
-    chart = (
-        alt.Chart(grouped)
-        .mark_circle()
-        .encode(
-            x=alt.X(
-                "jitter:Q",
-                title=None,
-                axis=alt.Axis(values=[0], ticks=True, grid=False, labels=False),
-                scale=alt.Scale(),
-            ),
-            y=alt.Y(
-                "Price",
-                title=ytitle,
-                scale=alt.Scale(type="log", zero=False, nice=False),
-            ),
-            color=alt.Color("Position"),
-            column=alt.Column(
-                "yearmonthdate(Date)",
-                title=None,
-                header=alt.Header(
-                    labelAngle=-90,
-                    titleOrient="top",
-                    labelOrient="bottom",
-                    labelAlign="right",
-                    labelPadding=3,
+        if position == "All":
+            top_price = grouped[grouped.Top_Player]
+            others = grouped[~grouped.Top_Player]
+        else:
+            top_price = grouped[
+                (grouped["Position"] == position) & (grouped.Top_Player)
+            ]
+            others = grouped[(grouped["Position"] == position) & (~grouped.Top_Player)]
+
+        if agg_metric == "count":
+            ytitle = "Sales Count"
+        elif agg_metric == "mean":
+            ytitle = "Mean Sale Price ($)"
+        elif agg_metric == "median":
+            ytitle = "Median Sale Price ($)"
+
+        c1, c2 = st.columns([2, 5])
+        chart = (
+            alt.Chart(grouped)
+            .mark_circle()
+            .encode(
+                x=alt.X(
+                    "jitter:Q",
+                    title=None,
+                    axis=alt.Axis(values=[0], ticks=True, grid=False, labels=False),
+                    scale=alt.Scale(),
                 ),
-            ),
-            size=alt.Size("Top_Player", title="Top Player"),
-            tooltip=[
-                alt.Tooltip("yearmonthdate(Date)", title="Date"),
-                alt.Tooltip(
-                    "Player",
-                ),
-                alt.Tooltip(
-                    "Position",
-                ),
-                alt.Tooltip(
-                    "Team",
-                ),
-                alt.Tooltip(
+                y=alt.Y(
                     "Price",
                     title=ytitle,
-                    format=",.2f" if ytitle != "Sales Count" else ",",
+                    scale=alt.Scale(type="log", zero=False, nice=False),
                 ),
-            ],
-            href="NFLALLDAY_ASSETS_URL",
-        )
-        .transform_calculate(
-            # Generate Gaussian jitter with a Box-Muller transform
-            jitter="sqrt(-2*log(random()))*cos(2*PI*random())"
-        )
-        .configure_facet(spacing=0)
-        .configure_view(stroke=None)
-        .interactive()
-        .properties(height=600, width=100)
-    )
-
-    c1.write(player_display)
-    if agg_metric != "count":
-        pval = ttest_ind(
-            top_price.Price.values, others.Price.values, equal_var=False
-        ).pvalue
-        c1.metric(
-            f"{ytitle}, Top Players (for selected positions)",
-            f"{top_price.Price.agg(agg_metric):,.2f}",
-        )
-        c1.metric(
-            f"{ytitle}, Other Players (for selected positions)",
-            f"{others.Price.agg(agg_metric):,.2f}",
-        )
-    else:
-        top_count = top_price.groupby("Player").Price.count()
-        others_count = others.groupby("Player").Price.count()
-        c1.metric(
-            f"Average Sales Count, Top Players (for selected positions)",
-            f"{top_count.mean():,.2f}",
-        )
-        c1.metric(
-            f"Average Sales Count, Other Players (for selected positions)",
-            f"{others_count.mean():,.2f}",
-        )
-        pval = ttest_ind(top_count.values, others_count.values, equal_var=False).pvalue
-
-    c1.metric(
-        "Significant Difference?", f"{pval:.3f}", "+ Yes" if pval < 0.05 else "- No"
-    )
-    c2.altair_chart(chart)
-
-    cols = st.columns(5)
-    for i in list(range(num_players))[:5]:
-        headshot_url = stats_df.iloc[i]["headshot_url"]
-        try:  # don't want to error out if the image doesnt load
-            image = load_headshot(headshot_url)
-            cols[i].image(
-                image,
-                use_column_width="auto",
+                color=alt.Color("Position"),
+                column=alt.Column(
+                    "yearmonthdate(Date)",
+                    title=None,
+                    header=alt.Header(
+                        labelAngle=-90,
+                        titleOrient="top",
+                        labelOrient="bottom",
+                        labelAlign="right",
+                        labelPadding=3,
+                    ),
+                ),
+                size=alt.Size("Top_Player", title="Top Player"),
+                tooltip=[
+                    alt.Tooltip("yearmonthdate(Date)", title="Date"),
+                    alt.Tooltip(
+                        "Player",
+                    ),
+                    alt.Tooltip(
+                        "Position",
+                    ),
+                    alt.Tooltip(
+                        "Team",
+                    ),
+                    alt.Tooltip(
+                        "Price",
+                        title=ytitle,
+                        format=",.2f" if ytitle != "Sales Count" else ",",
+                    ),
+                ],
+                href="NFLALLDAY_ASSETS_URL",
             )
-        except:
-            pass
-        cols[i].metric(
-            f"{player_display.iloc[i]['Player']} ({player_display.iloc[i]['Position']}) - {player_display.iloc[i]['Team']}",
-            player_display.iloc[i][metric.replace("_", " ").title()],
-            metric.replace("_", " ").title(),
+            .transform_calculate(
+                # Generate Gaussian jitter with a Box-Muller transform
+                jitter="sqrt(-2*log(random()))*cos(2*PI*random())"
+            )
+            .configure_facet(spacing=0)
+            .configure_view(stroke=None)
+            .interactive()
+            .properties(height=600, width=100)
         )
 
-    with st.expander("Full Stats Infomation"):
-        st.write(
-            "All of the above stats information, obtained from [`nfl_data_py`](https://github.com/cooperdff/nfl_data_py). Uses the Date Range and Player Position from above. See [here](https://github.com/nflverse/nflreadr/blob/bf1dc066c18b67823b9293d8edf252e3a58c3208/data-raw/dictionary_playerstats.csv) for a description of most metrics."
-        )
-        st.write(stats_df)
-        csv = convert_df(stats_df)
+        c1.write(player_display)
+        if agg_metric != "count":
+            pval = ttest_ind(
+                top_price.Price.values, others.Price.values, equal_var=False
+            ).pvalue
+            c1.metric(
+                f"{ytitle}, Top Players (for selected positions)",
+                f"{top_price.Price.agg(agg_metric):,.2f}",
+            )
+            c1.metric(
+                f"{ytitle}, Other Players (for selected positions)",
+                f"{others.Price.agg(agg_metric):,.2f}",
+            )
+        else:
+            top_count = top_price.groupby("Player").Price.count()
+            others_count = others.groupby("Player").Price.count()
+            c1.metric(
+                f"Average Sales Count, Top Players (for selected positions)",
+                f"{top_count.mean():,.2f}",
+            )
+            c1.metric(
+                f"Average Sales Count, Other Players (for selected positions)",
+                f"{others_count.mean():,.2f}",
+            )
+            pval = ttest_ind(
+                top_count.values, others_count.values, equal_var=False
+            ).pvalue
 
-        st.download_button(
-            "Press to Download",
-            csv,
-            f"nfl_stats_{date_range.replace(' ', '')}_Position-{position}.csv",
-            "text/csv",
-            key="download-csv",
+        c1.metric(
+            "Significant Difference?", f"{pval:.3f}", "+ Yes" if pval < 0.05 else "- No"
         )
+        c2.altair_chart(chart)
+
+        cols = st.columns(5)
+        for i in list(range(num_players))[:5]:
+            headshot_url = stats_df.iloc[i]["headshot_url"]
+            try:  # don't want to error out if the image doesnt load
+                image = load_headshot(headshot_url)
+                cols[i].image(
+                    image,
+                    use_column_width="auto",
+                )
+            except:
+                pass
+            cols[i].metric(
+                f"{player_display.iloc[i]['Player']} ({player_display.iloc[i]['Position']}) - {player_display.iloc[i]['Team']}",
+                player_display.iloc[i][metric.replace("_", " ").title()],
+                metric.replace("_", " ").title(),
+            )
+
+        with st.expander("Full Stats Infomation"):
+            st.write(
+                "All of the above stats information, obtained from [`nfl_data_py`](https://github.com/cooperdff/nfl_data_py). Uses the Date Range and Player Position from above. See [here](https://github.com/nflverse/nflreadr/blob/bf1dc066c18b67823b9293d8edf252e3a58c3208/data-raw/dictionary_playerstats.csv) for a description of most metrics."
+            )
+            st.write(stats_df)
+            csv = convert_df(stats_df)
+
+            st.download_button(
+                "Press to Download",
+                csv,
+                f"nfl_stats_{date_range.replace(' ', '')}_Position-{position}.csv",
+                "text/csv",
+                key="download-csv",
+            )
 
 with tab4:
     st.header("Plays or Players?")
@@ -750,147 +1004,148 @@ with tab4:
     - Moment Tier: The level of rarity-- All tiers, or Common, Rare, Legendary, or Ultimate (in order of increasing rarity)
     """
     )
-    date_range = st.radio(
-        "Date range:",
-        play_v_player_date_ranges,
-        key="radio_summary",
-        horizontal=True,
-    )
-    (
-        play_type_price_data,
-        play_type_tier_price_data,
-        player_tier_price_data,
-        topN_player_data,
-    ) = load_play_v_player_data(date_range)
-
-    tier = st.selectbox(
-        "Choose the Moment Tier (the rarity level of the Moment NFT)",
-        ["All Tiers", "COMMON", "RARE", "LEGENDARY", "ULTIMATE"],
-        format_func=lambda x: x.title(),
-        key="select_summary",
-    )
-
-    if tier == "All Tiers":
-        player_chart = alt_mean_price(topN_player_data, "Player")
-        play_type_chart = alt_mean_price(
-            play_type_price_data, "Play_Type", y_title=None, y_labels=False
+    if st.checkbox("Load Section?", key="load_tab4"):
+        date_range = st.radio(
+            "Date range:",
+            play_v_player_date_ranges,
+            key="radio_summary",
+            horizontal=True,
         )
-    else:
-        play_type_tier_subset = get_subset(
-            play_type_tier_price_data, "Moment_Tier", tier
-        )
-        player_tier_subset = get_subset(player_tier_price_data, "Moment_Tier", tier)
-        player_chart = alt_mean_price(player_tier_subset, "Player")
-        play_type_chart = alt_mean_price(
-            play_type_tier_subset, "Play_Type", y_title=None, y_labels=False
+        (
+            play_type_price_data,
+            play_type_tier_price_data,
+            player_tier_price_data,
+            topN_player_data,
+        ) = load_play_v_player_data(date_range)
+
+        tier = st.selectbox(
+            "Choose the Moment Tier (the rarity level of the Moment NFT)",
+            ["All Tiers", "COMMON", "RARE", "LEGENDARY", "ULTIMATE"],
+            format_func=lambda x: x.title(),
+            key="select_summary",
         )
 
-    chart = alt.hconcat(player_chart, play_type_chart, spacing=10).resolve_scale(
-        y="shared"
-    )
-    st.altair_chart(chart, use_container_width=True)
+        if tier == "All Tiers":
+            player_chart = alt_mean_price(topN_player_data, "Player")
+            play_type_chart = alt_mean_price(
+                play_type_price_data, "Play_Type", y_title=None, y_labels=False
+            )
+        else:
+            play_type_tier_subset = get_subset(
+                play_type_tier_price_data, "Moment_Tier", tier
+            )
+            player_tier_subset = get_subset(player_tier_price_data, "Moment_Tier", tier)
+            player_chart = alt_mean_price(player_tier_subset, "Player")
+            play_type_chart = alt_mean_price(
+                play_type_tier_subset, "Play_Type", y_title=None, y_labels=False
+            )
 
-    with st.expander("Summary"):
+        chart = alt.hconcat(player_chart, play_type_chart, spacing=10).resolve_scale(
+            y="shared"
+        )
+        st.altair_chart(chart, use_container_width=True)
+
+        with st.expander("Summary"):
+            st.write(
+                f"""
+            **Note** that there have only been 2 sales of Ultimate NFTs, so we will not focus analysis on these.
+
+            For `All Tiers`:
+            - Pressure is the most valuable play type, regardless of Date range
+            - Team-based moments have high mean sales price for before the start of Week 1, but after that it is generally mixed by position. 
+            For `Common` moments:
+            - QBs are generally the most popular position group for all Dates, with WR and RB also fairly popular (few in the top 40 for other position groups). Tom Brady has a particularly high mean price.
+            - With the high number of QBs, it makes sense that Pass is the highest mean price for play types.
+            For `Rare` and `Legendary` moments:
+            - Similar trends are noted for Player positions and Play Type, though other QBs surpass Tom Brady at the top.
+            - A Legendary 2-pt Attempt Play Type moment was sold for $5000, surpassing the average price of Pass and other play types.
+            """
+            )
+        st.subheader("Don't hate the player")
         st.write(
             f"""
-        **Note** that there have only been 2 sales of Ultimate NFTs, so we will not focus analysis on these.
+            Generally **Players are among the most important feature in determining Moment price**.
+            That is, a moment from a very popular player (such as Tom Brady) would be expected to cost more than one from a less popular player (such as Lil'Jordan Humphrey).
 
-        For `All Tiers`:
-        - Pressure is the most valuable play type, regardless of Date range
-        - Team-based moments have high mean sales price for before the start of Week 1, but after that it is generally mixed by position. 
-        For `Common` moments:
-        - QBs are generally the most popular position group for all Dates, with WR and RB also fairly popular (few in the top 40 for other position groups). Tom Brady has a particularly high mean price.
-        - With the high number of QBs, it makes sense that Pass is the highest mean price for play types.
-        For `Rare` and `Legendary` moments:
-        - Similar trends are noted for Player positions and Play Type, though other QBs surpass Tom Brady at the top.
-        - A Legendary 2-pt Attempt Play Type moment was sold for $5000, surpassing the average price of Pass and other play types.
+            While this may seem obvious, it is backed up by some statistics. See the `Statisical Analysis` box below, and the [Methods](#methods) section for more details.
         """
         )
-    st.subheader("Don't hate the player")
-    st.write(
-        f"""
-        Generally **Players are among the most important feature in determining Moment price**.
-        That is, a moment from a very popular player (such as Tom Brady) would be expected to cost more than one from a less popular player (such as Lil'Jordan Humphrey).
 
-        While this may seem obvious, it is backed up by some statistics. See the `Statisical Analysis` box below, and the [Methods](#methods) section for more details.
-    """
-    )
+        with st.expander("Statistical Analysis"):
+            st.write(
+                f"""
+            To analyze whether Players themselves or the Play Type captured in the Moment lead to more value, we used XGBoost to determine feature importance of our data.
+            See [Methods](#methods) below for more details. Our model included 
+            - `Player` name for the top 35 Players, with the remaining Players grouped into a `Player_Other` category
+            - `Team` name for the top 6 Teams, with the remaining Teams grouped into a `Team_Other` category
+            - `Position` name for the top 3 Postions, with the remaining Positions grouped into a `Postions_Other` category
+            - `Play_Type` name for the top 4 Play_Types, with the remaining Play_Types grouped into a `Play_Type_Other` category
+            - `Rarity`, coding the Moment Tier as an integer in increasing order of rarity
+            - `Sales_Count`: the number of times a specific NFT is sold (e.g. if an NFT was sold 3 times, this number would be 3 for all rows of data)
+            - `Resell Number`: for a specific transaction, the number of times that each specific NFT was resold (e.g. for the first ransaction of an NFT, this would be 0; if the same NFT was then purchased again, the second sale would have a value of 1)
+            We used these features to determine the price of the NFT, determining which factors are best indicators of predicting the sale price of an NFT.
 
-    with st.expander("Statistical Analysis"):
-        st.write(
-            f"""
-        To analyze whether Players themselves or the Play Type captured in the Moment lead to more value, we used XGBoost to determine feature importance of our data.
-        See [Methods](#methods) below for more details. Our model included 
-        - `Player` name for the top 35 Players, with the remaining Players grouped into a `Player_Other` category
-        - `Team` name for the top 6 Teams, with the remaining Teams grouped into a `Team_Other` category
-        - `Position` name for the top 3 Postions, with the remaining Positions grouped into a `Postions_Other` category
-        - `Play_Type` name for the top 4 Play_Types, with the remaining Play_Types grouped into a `Play_Type_Other` category
-        - `Rarity`, coding the Moment Tier as an integer in increasing order of rarity
-        - `Sales_Count`: the number of times a specific NFT is sold (e.g. if an NFT was sold 3 times, this number would be 3 for all rows of data)
-        - `Resell Number`: for a specific transaction, the number of times that each specific NFT was resold (e.g. for the first ransaction of an NFT, this would be 0; if the same NFT was then purchased again, the second sale would have a value of 1)
-        We used these features to determine the price of the NFT, determining which factors are best indicators of predicting the sale price of an NFT.
+            We used 2 measures to assess feature importance: [gain](https://xgboost.readthedocs.io/en/stable/python/python_api.html#xgboost.Booster.get_score) (how much a feature contributed to the model), and [SHAP](https://github.com/slundberg/shap) (an approach for explaining output of machine learning models) (see [here](https://stackoverflow.com/a/59007136) for a discussion of determining feature importance).
 
-        We used 2 measures to assess feature importance: [gain](https://xgboost.readthedocs.io/en/stable/python/python_api.html#xgboost.Booster.get_score) (how much a feature contributed to the model), and [SHAP](https://github.com/slundberg/shap) (an approach for explaining output of machine learning models) (see [here](https://stackoverflow.com/a/59007136) for a discussion of determining feature importance).
+            Note: A feature is just a [measurable property of our data](https://en.wikipedia.org/wiki/Feature_(machine_learning)), such as whether the NFT is from a specific player. 
+            """
+            )
+            c1, c2, c3 = st.columns(3)
 
-        Note: A feature is just a [measurable property of our data](https://en.wikipedia.org/wiki/Feature_(machine_learning)), such as whether the NFT is from a specific player. 
-        """
-        )
-        c1, c2, c3 = st.columns(3)
+            image = Image.open("images/gain_importance.png")
+            baseheight = 700
+            hpercent = baseheight / float(image.size[1])
+            wsize = int((float(image.size[0]) * float(hpercent)))
+            image = image.resize((wsize, baseheight), Image.Resampling.LANCZOS)
 
-        image = Image.open("images/gain_importance.png")
-        baseheight = 700
-        hpercent = baseheight / float(image.size[1])
-        wsize = int((float(image.size[0]) * float(hpercent)))
-        image = image.resize((wsize, baseheight), Image.Resampling.LANCZOS)
+            c1.image(
+                image,
+                use_column_width="auto",
+                caption="Figure 1: Gain for determination of Feature Importance",
+            )
+            image = Image.open("images/mean_shap.png")
+            baseheight = 700
+            hpercent = baseheight / float(image.size[1])
+            wsize = int((float(image.size[0]) * float(hpercent)))
+            image = image.resize((wsize, baseheight), Image.Resampling.LANCZOS)
 
-        c1.image(
-            image,
-            use_column_width="auto",
-            caption="Figure 1: Gain for determination of Feature Importance",
-        )
-        image = Image.open("images/mean_shap.png")
-        baseheight = 700
-        hpercent = baseheight / float(image.size[1])
-        wsize = int((float(image.size[0]) * float(hpercent)))
-        image = image.resize((wsize, baseheight), Image.Resampling.LANCZOS)
+            c2.image(
+                image,
+                use_column_width="auto",
+                caption="Figure 2: Mean absolute SHAP values",
+            )
+            c3.write(
+                f"""
+            While the methods have some differences, both generally agree that **Player**, **Position** and **Rarity** are most importantant, while **Play_Type** is lower down on ranking.
 
-        c2.image(
-            image,
-            use_column_width="auto",
-            caption="Figure 2: Mean absolute SHAP values",
-        )
-        c3.write(
-            f"""
-        While the methods have some differences, both generally agree that **Player**, **Position** and **Rarity** are most importantant, while **Play_Type** is lower down on ranking.
+            This makes sense, as average prices jump drastically as rarity increases, and as we saw above, certain specific players or position groups were among the highest average price.
 
-        This makes sense, as average prices jump drastically as rarity increases, and as we saw above, certain specific players or position groups were among the highest average price.
+            Figure 1:
+            - Tom Brady, Patrick Mahomes, and several other QBs (as well as the position of QB itself) are highest on the list. That is, whether you are one of these players or not contributes the predicting the price of an NFT.
+            - Rarity is the 4th ranked feature
+            - The first `Play_type` is ranked around 25, showing that this has little relative effect in determining NFT price compared to Players
 
-        Figure 1:
-        - Tom Brady, Patrick Mahomes, and several other QBs (as well as the position of QB itself) are highest on the list. That is, whether you are one of these players or not contributes the predicting the price of an NFT.
-        - Rarity is the 4th ranked feature
-        - The first `Play_type` is ranked around 25, showing that this has little relative effect in determining NFT price compared to Players
-
-        Figure 2:
-        - `Rarity`, followed by being a Player outside the top 35 or position outside the top 3 (not a QB, RB or Team-based Moment) explain the NFT the most
-        - The number sales, and the resell number for NFTs also show value in determining price. Generally, people would like to resell at a profit (maybe investigated in a future analysis?) so more sales of a specific NFT may lead to a higher price overall.
-        - Whether the Moment is of Tom Brady still has an important effect on explaining price.
-        - `Play_Type_Interception` has the 8th highest mean SHAP value. Play Type appears higher in this method of explaining importance, but still below many Player-related categories
-        """
-        )
-        st.write(
-            f"""
-        Some examples of interactions between features are shown below, described in clockwise from the top left:
-        1. If an NFT has the feature `Player_Other` (red), our model would predict its price is lower for higher Rarity levels.
-        2. The opposite effect is seen for `Position_QB`: for higher rarities, a QB NFT would be predicted to be hgiher.
-        3. While more mixed, the the previous 2 charts, NFTs for `Position_Other` have higher prices at Rarity 1 (Rare), but lower prices at Rarity 2 (Legendary)
-        4. `Play_Type_Interception` is similar to `Player_Other`: NFTs of this type are lower than those not of inteceptions at igher Rarity values.
-        5. If an NFT is `Player_Other` (not a top-35 player by importance) and is a QB, its price is predicted to be lower.
-        6. For `Play_Type Rush`, if a player is not `Position_Other` (so either QB, RB or Team), an NFT would be predicted to have lower value if the NFT shows a Rushing play.
-        """
-        )
-        image = Image.open("images/interactions.png")
-        st.image(
-            image,
-            use_column_width="auto",
-            caption="Figure 3: Selection of interactions between features",
-        )
+            Figure 2:
+            - `Rarity`, followed by being a Player outside the top 35 or position outside the top 3 (not a QB, RB or Team-based Moment) explain the NFT the most
+            - The number sales, and the resell number for NFTs also show value in determining price. Generally, people would like to resell at a profit (maybe investigated in a future analysis?) so more sales of a specific NFT may lead to a higher price overall.
+            - Whether the Moment is of Tom Brady still has an important effect on explaining price.
+            - `Play_Type_Interception` has the 8th highest mean SHAP value. Play Type appears higher in this method of explaining importance, but still below many Player-related categories
+            """
+            )
+            st.write(
+                f"""
+            Some examples of interactions between features are shown below, described in clockwise from the top left:
+            1. If an NFT has the feature `Player_Other` (red), our model would predict its price is lower for higher Rarity levels.
+            2. The opposite effect is seen for `Position_QB`: for higher rarities, a QB NFT would be predicted to be hgiher.
+            3. While more mixed, the the previous 2 charts, NFTs for `Position_Other` have higher prices at Rarity 1 (Rare), but lower prices at Rarity 2 (Legendary)
+            4. `Play_Type_Interception` is similar to `Player_Other`: NFTs of this type are lower than those not of inteceptions at igher Rarity values.
+            5. If an NFT is `Player_Other` (not a top-35 player by importance) and is a QB, its price is predicted to be lower.
+            6. For `Play_Type Rush`, if a player is not `Position_Other` (so either QB, RB or Team), an NFT would be predicted to have lower value if the NFT shows a Rushing play.
+            """
+            )
+            image = Image.open("images/interactions.png")
+            st.image(
+                image,
+                use_column_width="auto",
+                caption="Figure 3: Selection of interactions between features",
+            )
