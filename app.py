@@ -75,7 +75,6 @@ with tab1:
     st.header("Challenges Overview")
 
     challenges = load_challenge_data()
-    st.write(challenges)
     chart = (
         alt.Chart(challenges)
         .mark_bar()
@@ -443,12 +442,12 @@ with tab1:
         )
         c1.write("Average price by Tier and Set Type")
         c1.write(grouped_price_df)
-        nstars=c2.selectbox(
+        nstars = c2.selectbox(
             "Choose number of stars:",
             ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"],
             key="star_select",
         )
-        estimation_method=c2.radio(
+        estimation_method = c2.radio(
             "Choose estimation method",
             ["Average Price", "Random sampling"],
             key="star_method",
@@ -456,19 +455,41 @@ with tab1:
 
         star_dict = {
             "⭐": {"COMMON": 1, "RARE": 0, "LEGENDARY": 0},
-            "⭐⭐": {"COMMON": 2+1, "RARE": 0, "LEGENDARY": 0},
-            "⭐⭐⭐": {"COMMON": 2+(1-rare3)+2+1, "RARE": rare3, "LEGENDARY": 0},
-            "⭐⭐⭐⭐": {"COMMON": 2+(1-rare4)+2+(1-rare3)+2+1, "RARE": rare4+rare3, "LEGENDARY": 0},
-            "⭐⭐⭐⭐⭐": {"COMMON": 2+2+(1-rare4)+2+(1-rare3)+2+1, "RARE": rare5+rare4+rare3, "LEGENDARY": legendary5},
+            "⭐⭐": {"COMMON": 2 + 1, "RARE": 0, "LEGENDARY": 0},
+            "⭐⭐⭐": {"COMMON": 2 + (1 - rare3) + 2 + 1, "RARE": rare3, "LEGENDARY": 0},
+            "⭐⭐⭐⭐": {
+                "COMMON": 2 + (1 - rare4) + 2 + (1 - rare3) + 2 + 1,
+                "RARE": rare4 + rare3,
+                "LEGENDARY": 0,
+            },
+            "⭐⭐⭐⭐⭐": {
+                "COMMON": 2 + 2 + (1 - rare4) + 2 + (1 - rare3) + 2 + 1,
+                "RARE": rare5 + rare4 + rare3,
+                "LEGENDARY": legendary5,
+            },
         }
 
-        if estimation_method=="Average Price":
+        total_reward = 0
+        avg_price_dict = {
+            "COMMON": grouped_price_df[
+                (grouped_price_df["Moment_Tier"] == "COMMON")
+                & (grouped_price_df["core"])
+            ].Price.values[0],
+            "RARE": grouped_price_df[
+                (grouped_price_df["Moment_Tier"] == "RARE") & (grouped_price_df["core"])
+            ].Price.values[0],
+            "LEGENDARY": grouped_price_df[
+                (grouped_price_df["Moment_Tier"] == "LEGENDARY")
+                & (grouped_price_df["core"])
+            ].Price.values[0],
+        }
+
+        if estimation_method == "Average Price":
             for k, v in star_dict[nstars].items():
-                ...
+                total_reward += avg_price_dict[k] * v
+            c3.metric("Expected average reward value", f"{total_reward:.2f}")
         else:
             c3.text("Not imlemented yet, try Average price")
-
-
 
 
 with tab2:
