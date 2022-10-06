@@ -469,6 +469,30 @@ with tab1:
             },
         }
 
+        moments_needed = {  # #TODO: clean this up
+            1: {
+                "⭐": 2,
+                "⭐⭐": 2 + 4,
+                "⭐⭐⭐": 2 + 4 + 5,
+                "⭐⭐⭐⭐": 2 + 4 + 5 + 5,
+                "⭐⭐⭐⭐⭐": 2 + 4 + 5 + 5 + 8,
+            },
+            2: {
+                "⭐": 4,
+                "⭐⭐": 4 + 4,
+                "⭐⭐⭐": 4 + 4 + 5,
+                "⭐⭐⭐⭐": 4 + 4 + 5 + 5,
+                "⭐⭐⭐⭐⭐": 4 + 4 + 5 + 5 + 8,
+            },
+            3: {
+                "⭐": 3,
+                "⭐⭐": 3 + 4,
+                "⭐⭐⭐": 3 + 4 + 4,
+                "⭐⭐⭐⭐": 3 + 4 + 4 + 5,
+                "⭐⭐⭐⭐⭐": 3 + 4 + 4 + 5 + 8,
+            },
+        }
+
         total_reward = 0
         avg_price_dict = {
             "COMMON": grouped_price_df[
@@ -483,11 +507,14 @@ with tab1:
                 & (grouped_price_df["core"])
             ].Price.values[0],
         }
+        total_cost = floor_price * moments_needed[challenge_week][nstars]
 
         if estimation_method == "Average Price":
             for k, v in star_dict[nstars].items():
                 total_reward += avg_price_dict[k] * v
-            c3.metric("Expected average reward value", f"{total_reward:.2f}")
+            c3.metric("Expected average Total cost (including burns)", f"${total_cost + (floor_price * 5):.2f}")
+            c3.metric("Expected average reward value", f"${total_reward:.2f}", f"{total_reward - (total_cost + (floor_price * 5)):.2f} dollar return")
+
         else:
             c3.text("Not imlemented yet, try Average price")
 
