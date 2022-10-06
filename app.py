@@ -307,7 +307,11 @@ with tab1:
 
     ###
     st.header("Hail Mary? Value proposition of completing challenges")
-
+    st.write(
+        f"""
+        Is it a good play to complete challenges? Let's try to find out...
+        """
+    )
     if challenge_week == 4:
         st.write(
             "Data currently unavailable for Week 4, choose another challenge above"
@@ -319,7 +323,21 @@ with tab1:
         reward_df = load_challenge_reward()
         floor_price = df.Price.min()
 
-        st.subheader("Reward breakdown")
+        st.subheader("Reward distriburion breakdown")
+        st.write(
+            f"""
+            Below is a breakdown of Pack drops given as rewards for completing challenges.
+
+            In NFL All Day, Challenges pay out Yards which count towards a user's playbook.
+            Depending on how many yards a user earns at the end of a week, the user gets a Pack dropped to them at a certain star level.
+
+            This works out to approximately one star per challenge completed (though other tasks are necessary, such as logging on to the website).
+
+            Gaining a higher level pack means the users also gets the lower level packs (so earning a 3-star pack would mean the user also earns a 1- and 2- star pack).
+
+            Special thanks to Twitter user [@DiamondNFLAD](https://twitter.com/DiamondNFLAD) for consolidating reward information, such as in this [tweet](https://twitter.com/DiamondNFLAD/status/1575625118969376768).
+            """
+        )
         reward_weekly = reward_df[reward_df.Week == challenge_week]
 
         rare1 = reward_weekly.loc[
@@ -413,7 +431,23 @@ with tab1:
             f'{reward_weekly.loc[reward_weekly.Reward_Star==5, "Num Moments"].values[0]}',
         )
 
-        st.subheader("Sales Price Breakdown")
+        st.subheader(f"Estimated value breakdown, Week {challenge_week}")
+        st.write(
+            f"""
+            In this section, we show the weekly exected value estimate from completing challenges, necessary to get Playbook Pack rewards. Choose a challenge [above](#driving-downfield-price-movement-related-to-challenges) to change which week to look at.
+
+            The floor price is listed, as well is the cost for eligibility for pack rewards (generally burning 5 Moments).
+
+            Expected average reward value is calculated by multiplying the total number of expected Moments from each reward tier by the average price of Moments. 
+
+            Total cost is calculated by multiplying the number of Moments needed for the weekly challenges by the floor price of Moments, and adding in the cost for eligibility.
+
+            Generally, the estimated total rewards for getting ⭐⭐⭐ packs (which also includes ⭐ and ⭐⭐ packs) is around breakeven.
+
+            **NOTE**: this method is very rough, as Moments needed to complete challenges will probably cost more than the floor.
+            Future methods will incorportae more information about pricing of Moments needed for completing challenges
+            """
+        )
         c1, c2, c3 = st.columns(3)
         c1.metric(
             f"Floor price (average, Week {challenge_week})", f"${floor_price:.2f}"
@@ -512,7 +546,7 @@ with tab1:
         if estimation_method == "Average Price":
             for k, v in star_dict[nstars].items():
                 total_reward += avg_price_dict[k] * v
-            c3.metric("Expected average Total cost (including burns)", f"${total_cost + (floor_price * 5):.2f}")
+            c3.metric("Expected average total cost (including burns)", f"${total_cost + (floor_price * 5):.2f}")
             c3.metric("Expected average reward value", f"${total_reward:.2f}", f"{total_reward - (total_cost + (floor_price * 5)):.2f} dollar return")
 
         else:
