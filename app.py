@@ -15,14 +15,18 @@ st.caption(
 Analyzing the biggest plays and most popular players featuring in NFL All Day Moments. 
 """
 )
-
+st.write(
+    f"""
+Explore different analyses using the tabs below, and expand Methods for information on how these were computed!
+"""
+)
 
 st.header("Methods")
 with st.expander("Method details and data sources"):
     st.write(
         f"""
-Data was queried using the [Flipside ShroomDK](https://sdk.flipsidecrypto.xyz/shroomdk) using [this query template](https://github.com/ltirrell/allday/blob/main/sql/sdk_allday.sql), acquiring all the sales data and metadata from the Flow tables.
-Data is saved to a [GitHub repo](https://github.com/ltirrell/allday) ([data collection script](https://github.com/ltirrell/allday/blob/main/gather_data.py), [data directory](https://github.com/ltirrell/allday/blob/main/data)).
+Data was queried using the [Flipside ShroomDK](https://sdk.flipsidecrypto.xyz/shroomdk) using [this query template](https://github.com/ltirrell/allday/blob/round4/sql/sdk_allday.sql), acquiring all the sales data and metadata from the Flow tables.
+Data is saved to a [GitHub repo](https://github.com/ltirrell/allday) ([data collection script](https://github.com/ltirrell/allday/blob/round4/gather_data.py), [data directory](https://github.com/ltirrell/allday/blob/round4/data)).
 The script is currently manually ran at least once per week (to get new data for each NFL week).
 Note that there may be some difference between this data (such as average sales price/number of sales) and what is listed at the NFL All Day Marketplace.
 
@@ -56,8 +60,11 @@ where
 - `marketplace_id` is the random effect, used to group the sales information based on this value. For example, [marketplace_id 1015](https://nflallday.com/listing/moment/1015) would group all of the sales for all of the 60 different Stephon Diggs Moment NFT IDs. NFT ID wasn't used, as all of them are the same (i.e. there are no features of an NFT with the same marketplace_id which vary by NFT ID).
 Details can found in [this notebook](https://github.com/ltirrell/allday/blob/round3/what_drives_price.ipynb).
 
-The [XGBoost Python Package](https://xgboost.readthedocs.io/en/stable/python/index.html) was used to determine feature importance using [this notebook](https://github.com/ltirrell/allday/blob/main/xgboost.ipynb).
+The [XGBoost Python Package](https://xgboost.readthedocs.io/en/stable/python/index.html) was used to determine feature importance using [this notebook](https://github.com/ltirrell/allday/blob/round4/xgboost.ipynb).
 Overall, the model explains about 69.2 percent of variance in the data (based on r^2 score); this isn't very accurate for prediction but is sufficient for determining which features most effect NFT Price.
+
+Paired 2-tailed t-tests were computed for various metrics to assess whether the average number of sales and sales price show differences in certain condions (such as before vs during a challenge).
+Price data for a week was grouped by `marketplace_id` (the unique id for each Moment, while `NFT_ID` is the unique item within a marketplace_id; the number of `NFT_ID`s per `marketplace_id` is up to the `total_circulation` value).
 """
     )
 
@@ -71,9 +78,16 @@ tab1, tab2, tab3, tab4 = st.tabs(
 )
 
 with tab1:
-
     st.header("Challenges Overview")
+    st.write(
+        f"""
+        [Challenges](https://nflallday.com/challenges/previous) are a way for users to earn rewards on the NFL All Day platform.
 
+        There are generally 5 regular challenges per week, with addtional challenges starting in week 4.
+
+        Below is a timeline of the start and end of challenges. `Ctrl-Click` a point to view NFL All Day page for the challenge, or explore more in the next section.
+        """
+    )
     challenges = load_challenge_data()
     chart = (
         alt.Chart(challenges)
@@ -97,7 +111,7 @@ with tab1:
                     "yearmonthdatehoursminutes(End Time (EDT))", title="End Time"
                 ),
                 alt.Tooltip("Challenge Payout"),
-                alt.Tooltip("Moments Needed"),
+                # alt.Tooltip("Moments Needed"),
                 alt.Tooltip("Completions", title="Users completing challenge"),
             ],
             href="URL",
@@ -109,6 +123,23 @@ with tab1:
     weekly_df, season_df = load_stats_data(2022)
 
     st.header("Driving downfield: price movement related to challenges")
+    st.write(
+        f"""
+        Choose a challenge to look at in more detail! This will effect **all** downstream sections shown in this tab.
+
+        The All Day page for the challenge, along with a breif description is on the left.
+
+        Sales data for the players eligible for the challenge are shown in the scatter plot, with red lines showing the start and end of games related to the challenge.
+        Gray lines show the start and end of the challenge.
+        Some challenges have wildcard entries (such as all `All Day Debut` Moments, or any Rare QB); these are shown in a different shape, though no specific analysis is done here investigting them.
+
+        Note that if there are than 10,000 sales in the time period, a weighted random sampling is done to decrease the number to 10,000 points.
+        Player proportions should stay the same, but outliers may be missing.
+        This is only done for visualization, and not for analyses below.
+
+        `Ctrl-Click` a point to view the marketplace page for that Moment!
+        """
+    )
     challenge = st.selectbox(
         "Choose a Challenge:",
         challenges.short_form.values,
@@ -161,7 +192,19 @@ with tab1:
 
     combined = alt_challenge_chart(challenge_chart_df, time_df, shape_col)
     c2.altair_chart(combined, use_container_width=True)
-
+    st.write(
+        f"""
+        Some general trends can be seen, where price of certain players increase or decrease during the course of game play, or postgame during a challenge period. Summary info is shown below, where `Overall` includes all sales date, while `Per Unique Moment` first groups the sales data by each All Day Marketplace ID.
+        - `Pre Game 1D`: Data for 1 day before the game period
+        - `During Game`: Data during the game period (between red lines)
+        - `Post Game 1D`: Data for 1 day after the game period
+        - `During Challenge`: Data during the Challenge period (between gray lines)
+        - `Pre Challenge 1D`: Data for 1 day before the Challenge period
+        - `Post Challenge 1D`: Data for 1 day after the Challenge period
+        These numbers are mostly descriptive.
+        Future analyses can explore this timeseries data in more detail, taking into account that specific players (who probably have notable games) show clear trends while others do not.
+        """
+    )
     cols = st.columns(6)
     metric_data = {}
     for i, x in enumerate(
@@ -196,9 +239,26 @@ with tab1:
             pass
 
     st.subheader("Pregame warmup vs postgame cooldown")
-
     c1, c2, c3 = st.columns([1, 2, 2])
-    metric = c1.radio("Choose a metric:", ["Price", "Count"], key="game_radio")
+    alpha = 0.05 / 8  # Bonferroni correction for 8 tests
+
+    c1.write(
+        f"""
+        Are there differences during, before or after challenges? How about for games?
+
+        To the left are charts showing average sales for eligible NFTs (choose `Count`, `Price`, `Floor` below for Sales Count, Average USD Price, and Floor USD Price, respectively).
+
+        Additionally, we'll check if there are any significant broad trends in the data.
+        p-values of a paired t-test comparing the different time periods are shown below, along with the average values for Count, Price and Floor price.
+        Values in green are significantly different, while red show no significant difference (a rather conservative value of {alpha} is used as the threshold for significance; 0.05 Bonferroni corrected for 8 tests; a value of less than 0.01 can be considered a less conservative threshold for significance).
+
+        Each challenge has diffrences, but general trends can be seen
+        - Sales counts are higher During Challenges than During Games
+        - Sales counts and prices are generally higher during a challenge than after a challenge, but floor prices may still stay similar.
+
+        """
+    )
+    metric = c1.radio("Choose a metric:", ["Price", "Count", "Floor"], key="game_radio")
     grouped_game = (
         challenge_df.groupby(
             [
@@ -212,7 +272,7 @@ with tab1:
                 "during_game",
             ]
         )
-        .agg(Price=("Price", "mean"), Count=("Price", "count"))
+        .agg(Price=("Price", "mean"), Count=("Price", "count"), Floor=("Price", "min"))
         .reset_index()
     )
     grouped_challenge = (
@@ -228,7 +288,7 @@ with tab1:
                 "during_challenge",
             ]
         )
-        .agg(Price=("Price", "mean"), Count=("Price", "count"))
+        .agg(Price=("Price", "mean"), Count=("Price", "count"), Floor=("Price", "min"))
         .reset_index()
     )
     game_chart = alt_challenge_game(grouped_game, "during_game", metric)
@@ -237,12 +297,11 @@ with tab1:
     c2.altair_chart(game_chart, use_container_width=True)
     c3.altair_chart(challenge_chart, use_container_width=True)
 
-    results = get_challenge_ttests(challenge_df, use_cache=True)
-    alpha = 0.05 / 4  # Bonferroni correction for 4 tests
-
+    results = get_challenge_ttests(challenge_df)
+    
     c1, c2, c3, c4 = st.columns(4)
     c1.subheader(
-        "Are people  transacting more moments before games, or throughout games?"
+        "Are people transacting more moments before games, or throughout games?"
     )
     k_price = "Before_Game_vs_During_Game_Price"
     v_price = results[k_price]
@@ -546,8 +605,15 @@ with tab1:
         if estimation_method == "Average Price":
             for k, v in star_dict[nstars].items():
                 total_reward += avg_price_dict[k] * v
-            c3.metric("Expected average total cost (including burns)", f"${total_cost + (floor_price * 5):.2f}")
-            c3.metric("Expected average reward value", f"${total_reward:.2f}", f"{total_reward - (total_cost + (floor_price * 5)):.2f} dollar return")
+            c3.metric(
+                "Expected average total cost (including burns)",
+                f"${total_cost + (floor_price * 5):.2f}",
+            )
+            c3.metric(
+                "Expected average reward value",
+                f"${total_reward:.2f}",
+                f"{total_reward - (total_cost + (floor_price * 5)):.2f} dollar return",
+            )
 
         else:
             c3.text("Not imlemented yet, try Average price")

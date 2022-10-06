@@ -708,7 +708,7 @@ def alt_challenge_chart(challenge_chart_df, time_df, shape_col):
         alt.Chart(challenge_chart_df)
         .mark_point(size=50, filled=True)
         .encode(
-            x=alt.X("yearmonthdatehoursminutes(Datetime):T"),
+            x=alt.X("yearmonthdatehoursminutes(Datetime):T", title=None),
             y=alt.Y("Price:Q", scale=alt.Scale(type="log")),
             color=alt.Color(
                 "Display",
@@ -719,7 +719,7 @@ def alt_challenge_chart(challenge_chart_df, time_df, shape_col):
                 sort=["Other"],
             ),
             tooltip=[
-                alt.Tooltip("yearmonthdatehoursminutes(Datetime):T", title=None),
+                alt.Tooltip("yearmonthdatehoursminutes(Datetime):T", title="Date"),
                 "Player",
                 alt.Tooltip("Display", title="Player Display"),
                 "Moment_Tier",
@@ -913,7 +913,7 @@ def get_challenge_ttests(challenge_df, use_cache=False, update_cache=False):
     return results
 
 
-def alt_challenge_game(df, xval, yval):
+def alt_challenge_game(df, xval, yval,):
     base = alt.Chart(df)
     chart = (
         base.mark_point(filled=True, size=100)
@@ -932,6 +932,7 @@ def alt_challenge_game(df, xval, yval):
                 "Moment_Tier:N",
                 "Price:Q",
                 "Count:Q",
+                "Floor:Q"
             ],
             color=alt.Color(
                 "Display:N",
