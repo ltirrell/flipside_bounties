@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from datetime import datetime
+import datetime
 from functools import partial
+from multiprocessing import Pool
 from pathlib import Path
 
 import nfl_data_py as nfl
@@ -124,52 +125,91 @@ pbp_fields = [
 
 rarity_dict = {"COMMON": 0, "RARE": 1, "LEGENDARY": 2, "ULTIMATE": 3}
 
+all_dates = [
+    f"{x:%Y-%m-%d}"
+    for x in pd.date_range(
+        datetime.date(2021, 12, 10), (datetime.datetime.today() - pd.Timedelta("1d"))
+    )
+]
 
 API_KEY = st.secrets["flipside"]["api_key"]
 sdk = ShroomDK(API_KEY)
 
 
-def get_query(team):
+def get_team_query(team):
     env = Environment(loader=FileSystemLoader("./sql"))
     template = env.get_template("sdk_allday.sql")
     query = template.render({"team": f"'{team}'"})
     return query
 
 
+def get_date_query(date, sql_file):
+    env = Environment(loader=FileSystemLoader("./sql"))
+    template = env.get_template(sql_file)
+    query = template.render({"date": f"'{date}'"})
+    return query
+
+
 def get_datetime_string():
-    now = datetime.now()
+    now = datetime.datetime.now()
     dt_string = now.strftime("%Y-%m-%d")
     return dt_string
 
 
 def get_flipside_team_data(team, save=True):
-    query = get_query(team)
-    query_result_set = sdk.query(query)
-    df = pd.DataFrame(query_result_set.rows, columns=query_result_set.columns)
-    if save:
-        dt_string = get_datetime_string()
-        output_dir = Path(f"data/{dt_string}")
-        output_dir.mkdir(exist_ok=True)
-        df.to_csv(
-            f"{output_dir}/{dt_string}_{team.replace(' ', '_')}.csv.gz",
-            index=False,
-            compression="gzip",
-        )
+    print(f"Getting data for {team}...")
+    dt_string = get_datetime_string()
+    output_dir = Path(f"data/{dt_string}")
+    output_dir.mkdir(exist_ok=True)
+    output_file = output_dir/ f"{dt_string}_team--{team.replace(' ', '_')}.csv.gz"
+    if not output_file.exists():
+        query = get_team_query(team)
+        query_result_set = sdk.query(query)
+        df = pd.DataFrame(query_result_set.rows, columns=query_result_set.columns)
+        if save:
+            print(f"Saving {output_file}...")
+            df.to_csv(
+                output_file,
+                index=False,
+                compression="gzip",
+            )
+    else:
+        return output_file
     return df
 
 
-def combine_flipside_data(data_dir):
+def get_flipside_pack_data(date, sql_file, output_str, save=True):
+    # dt_string = get_datetime_string()  # No longer using date
+    output_dir = Path(f"data/packs")
+    output_file = output_dir / f"{output_str}--{date.replace(' ', '_')}.csv.gz"
+    if not output_file.exists():
+        print(f"Getting data for {date}...")
+        query = get_date_query(date, sql_file)
+        query_result_set = sdk.query(query)
+        df = pd.DataFrame(query_result_set.rows, columns=query_result_set.columns)
+        if save:
+            output_dir.mkdir(exist_ok=True)
+            print(f"Saving {output_file}...")
+            df.to_csv(
+                output_file,
+                index=False,
+                compression="gzip",
+            )
+    else:
+        print(f"#@# Using cached file: {output_file} ...")
+    return output_file
+
+
+def combine_flipside_data(data_dir, glob_str, sort_by):
     d = Path(data_dir)
-    data_files = d.glob("*.csv.gz")
+    data_files = d.glob(glob_str)
     dfs = []
 
     for x in data_files:
         df = pd.read_csv(x)
         dfs.append(df)
 
-    combined_df = (
-        pd.concat(dfs).sort_values(by=["Date", "Player"]).reset_index(drop=True)
-    )
+    combined_df = pd.concat(dfs).sort_values(by=sort_by).reset_index(drop=True)
 
     return combined_df
 
@@ -360,12 +400,73 @@ def get_game_outcome(row):
 
 if __name__ == "__main__":
     # #TODO: turn on when updating
-    # for team in teams:
-    #     print(f"Getting data for {team}...")
-    #     get_flipside_team_data(team)
+    pack_dir = Path("data/packs")
+    with Pool(16) as p:
+        pack_data_func = partial(
+            get_flipside_pack_data, sql_file="sdk_packs.sql", output_str="pack_sales"
+        )
+        p.map(pack_data_func, all_dates)
+
+        reveals_func = partial(
+            get_flipside_pack_data,
+            sql_file="sdk_reveals.sql",
+            output_str="pack_reveals",
+        )
+        p.map(reveals_func, all_dates)
+
+    pack_df = combine_flipside_data(
+        pack_dir, f"*pack_sales--*csv.gz", ["Datetime", "Price"]
+    )
+    # #HACK: empirically found prices for Standard v Premium, PLAYOFFS grouped in with Standard
+    pack_df['Pack Type'] = pack_df.Price.apply(lambda x: 'Standard' if x < 79 or x == 84 else 'Premium')
+    pack_df.to_csv(
+        "data/pack_data.csv.gz",
+        index=False,
+        compression="gzip",
+    )
+    reveal_df = combine_flipside_data(pack_dir, f"*pack_reveals--*csv.gz", ["Datetime"])
+    reveal_df.to_csv(
+        "data/pack_reveals.csv.gz",
+        index=False,
+        compression="gzip",
+    )
+
+    combined_df = reveal_df.copy()
+    combined_df["NFTS"] = combined_df.NFTS.str.split(",")
+    combined_df["Moments_In_Pack"] = combined_df.NFTS.str.len()
+    combined_df = combined_df.rename(
+        columns={
+            "NFTS": "Moment_ID",
+            "PACK_ID": "Pack_ID",
+            "Datetime": "Datetime_Reveal",
+            "tx_id": "tx_id_Reveal",
+        }
+    )
+    combined_df = combined_df.explode("Moment_ID")
+    combined_df["Moment_ID"] = combined_df["Moment_ID"].str.split(".AllDay.").str[-1]
+    combined_df = combined_df.merge(
+        pack_df, left_on="Pack_ID", right_on="NFT_ID", how="left"
+    )
+    combined_df["Moment_ID"] = pd.to_numeric(combined_df["Moment_ID"])
+    combined_df = combined_df.rename(
+        columns={
+            "Price": "Pack_Price",
+            "Datetime": "Datetime_Pack",
+            "tx_id": "tx_id_Pack",
+            "Buyer": "Pack_Buyer",
+        }
+    ).drop(columns="NFT_ID")
+    combined_df.to_csv(
+        "data/pack_combined.csv.gz",
+        index=False,
+        compression="gzip",
+    )
 
     data_dir = Path("data", get_datetime_string())
-    df = combine_flipside_data(data_dir)
+    with Pool(16) as p:
+        p.map(get_flipside_team_data, teams)
+
+    df = combine_flipside_data(data_dir, f"*_team--*csv.gz",["Date", "Player"])
     sales_counts = (
         df.groupby("NFT_ID")["tx_id"]
         .count()
@@ -419,10 +520,10 @@ if __name__ == "__main__":
     weekly_data.to_csv("data/weekly_data.csv", index=False)
 
     # #TODO: turn on when updating
-    # nfl.cache_pbp(
-    #     get_years_after_date(years, 1999),
-    #     downcast=False,
-    # )
+    nfl.cache_pbp(
+        get_years_after_date(years, 1999),
+        downcast=False,
+    )
     pbp_data = nfl.import_pbp_data(
         get_years_after_date(years, 1999),
         downcast=False,
@@ -430,14 +531,14 @@ if __name__ == "__main__":
         # columns=pbp_fields  # no longer using fields
     )
     pbp_data["Season"] = pd.to_numeric(pbp_data.game_id.str.split("_").str[0])
-  
+
     pbp_data.to_csv(
         "data/pbp.csv.gz",
         index=False,
         compression="gzip",
     )
     pbp_2022 = pbp_data[pbp_data.Season == 2022].reset_index(drop=True)
-    pbp_2022.to_csv('data/pbp_2022.csv.gz', index=False, compression='gzip')
+    pbp_2022.to_csv("data/pbp_2022.csv.gz", index=False, compression="gzip")
 
     main_with_td = get_td_data(df, weekly_data, pbp_data, team_abbr)
     # #TODO: eventually add gambling lines etc info from schedule_data
@@ -450,6 +551,28 @@ if __name__ == "__main__":
         compression="gzip",
     )
 
+    merged = main_with_td.merge(
+        combined_df[
+            [
+                "Datetime_Reveal",
+                "Moment_ID",
+                "Moments_In_Pack",
+                "Datetime_Pack",
+                "Pack_Price",
+                "Pack_Buyer",
+                "Pack Type",
+            ]
+        ],
+        how="outer",
+        left_on="NFT_ID",
+        right_on="Moment_ID",
+    )
+
+    merged.to_csv(
+        "data/current_allday_data_pack.csv.gz",
+        index=False,
+        compression="gzip",
+    )
     roster_data = nfl.import_rosters(get_years_after_date(years, 1999))
     roster_data.to_csv("data/roster_data.csv", index=False)
 

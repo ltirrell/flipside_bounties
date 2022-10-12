@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import numpy as np
 import pandas as pd
 
 from utils import *
@@ -10,7 +11,7 @@ def get_score_data(score_data, date_range):
     if date_range == "All Time":
         df = score_data
     elif date_range == "2022 Full Season":
-        start =  week_timings[1][0]
+        start = week_timings[1][0]
         df = score_data[score_data.Date >= start]
     elif date_range == "2022 Week 1":
         start, end = week_timings[1]
@@ -24,7 +25,10 @@ def get_score_data(score_data, date_range):
     elif date_range == "2022 Week 4":
         start, end = week_timings[4]
         df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
-    print(df.columns)
+    elif date_range == "2022 Week 5":
+        start, end = week_timings[5]
+        df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
+
     grouped = df.groupby(["marketplace_id"]).agg(agg_dict).reset_index()
     grouped["Week"] = grouped.Week.astype(str)
     grouped["site"] = grouped.marketplace_id.apply(
@@ -45,7 +49,7 @@ def get_player_data(main_data, date_range, agg_metric):
     if date_range == "All Time":
         df = main_data
     elif date_range == "2022 Full Season":
-        start =  week_timings[1][0]
+        start = week_timings[1][0]
         df = score_data[score_data.Date >= start]
     elif date_range == "2022 Week 1":
         start, end = week_timings[1]
@@ -58,6 +62,9 @@ def get_player_data(main_data, date_range, agg_metric):
         df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
     elif date_range == "2022 Week 4":
         start, end = week_timings[4]
+        df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
+    elif date_range == "2022 Week 5":
+        start, end = week_timings[5]
         df = score_data[(score_data.Date >= start) & (score_data.Date < end)]
 
     grouped = (
@@ -81,16 +88,19 @@ def get_play_v_player_data(main_data, date_range):
     if date_range == "Since 2022 preseason":
         df = main_data[main_data.Date >= "2022-08-04"]
     elif date_range == "Since 2022 Week 1":
-        start =  week_timings[1][0]
+        start = week_timings[1][0]
         df = main_data[main_data.Date >= start]
     elif date_range == "Since 2022 Week 2":
-        start =  week_timings[2][0]
+        start = week_timings[2][0]
         df = main_data[main_data.Date >= start]
     elif date_range == "Since 2022 Week 3":
-        start =  week_timings[3][0]
+        start = week_timings[3][0]
         df = main_data[main_data.Date >= start]
     elif date_range == "Since 2022 Week 4":
-        start =  week_timings[4][0]
+        start = week_timings[4][0]
+        df = main_data[main_data.Date >= start]
+    elif date_range == "Since 2022 Week 5":
+        start = week_timings[5][0]
         df = main_data[main_data.Date >= start]
     else:
         df = main_data
@@ -137,6 +147,36 @@ def get_play_v_player_data(main_data, date_range):
         player_tier_price_data,
         topN_player_data,
     )
+
+
+def get_pack_data(grouped_pack, date_range_choice, date_range):
+    if date_range_choice == "By Date Range":
+        if date_range == "Since 2022 preseason":
+            df = grouped_pack[grouped_pack["Datetime_Pack"] >= "2022-08-04"]
+        elif date_range == "Since 2022 Week 1":
+            start = week_timings[1][0]
+            df = grouped_pack[grouped_pack["Datetime_Pack"] >= start]
+        elif date_range == "Since 2022 Week 2":
+            start = week_timings[2][0]
+            df = grouped_pack[grouped_pack["Datetime_Pack"] >= start]
+        elif date_range == "Since 2022 Week 3":
+            start = week_timings[3][0]
+            df = grouped_pack[grouped_pack["Datetime_Pack"] >= start]
+        elif date_range == "Since 2022 Week 4":
+            start = week_timings[4][0]
+            df = grouped_pack[grouped_pack["Datetime_Pack"] >= start]
+        elif date_range == "Since 2022 Week 5":
+            start = week_timings[5][0]
+            df = grouped_pack[grouped_pack["Datetime_Pack"] >= start]
+        else:
+            df = grouped_pack
+    elif date_range_choice == "By Selected Drop":
+        start, end = date_range
+        df = grouped_pack[
+            (grouped_pack["Datetime_Pack"] >= start)
+            & (grouped_pack["Datetime_Pack"] <= end)
+        ]
+    return df
 
 
 if __name__ == "__main__":
@@ -246,6 +286,8 @@ if __name__ == "__main__":
                 index=False,
             )
 
+    del score_data
+    _, grouped_pack = load_pack()
     for date_range in play_v_player_date_ranges:
         date_str = date_range.replace(" ", "_")
         (
@@ -270,3 +312,81 @@ if __name__ == "__main__":
             f"data/cache/play_v_player-topN_player-{date_str}--grouped.csv",
             index=False,
         )
+
+        pack_df = get_pack_data(grouped_pack, "By Date Range", date_range)
+        pack_df.to_csv(
+            f"data/cache/pack_data-{date_str}--grouped.csv.gz",
+            index=False,
+            compression="gzip",
+        )
+    del main_data
+    for date_range in pack_date_ranges:
+        date_str = date_range[0].split(" ")[0]
+        pack_df = get_pack_data(grouped_pack, "By Selected Drop", date_range)
+        pack_df.to_csv(
+            f"data/cache/pack_data-{date_str}--grouped.csv.gz",
+            index=False,
+            compression="gzip",
+        )
+
+    del grouped_pack
+    player_pack_data = load_player_pack()
+    series2_mint1 = player_pack_data[
+        (player_pack_data.Mint_Date >= "2022-09-27 00:00:00-04:00")
+        & (player_pack_data.Mint_Date < "2022-10-08 00:00:00-04:00")
+    ]
+    series2_mint1_grouped = (
+        series2_mint1.groupby(
+            [
+                "marketplace_id",
+                "Player",
+                "Team",
+                "Position",
+                "Season",
+                "Week",
+                "Moment_Tier",
+                "Moment_Date",
+                "Total_Circulation",
+                "site",
+                "Pack Type",
+            ]
+        )
+        .agg(
+            Price=("Price", "mean"),
+            Max_Price=("Price", "max"),
+            Min_Price=("Price", "min"),
+            Count=("tx_id", "count"),
+        )
+        .reset_index()
+    )
+    series2_mint1_grouped.to_csv(
+        f"data/cache/series2_mint1_grouped.csv",
+        index=False,
+    )
+
+    samples = []
+    for i in range(10000):
+        samp = get_pack_value(
+            series2_mint1, series2_mint1_standard_proportions, "Standard", i
+        )
+        samples.append(samp)
+    for i in range(5000):
+        samp = get_pack_value(
+            series2_mint1, series2_mint1_premium_proportions, "Premium", i
+        )
+        samples.append(samp)
+
+    roster_df = pd.read_csv("data/roster_data.csv")
+    roster_df = roster_df[roster_df.season == 2022]
+    sample_df = pd.concat(samples)
+    sample_df = sample_df.merge(
+        roster_df[["player_name", "headshot_url"]],
+        left_on="Player",
+        right_on="player_name",
+        how="left",
+    ).drop(columns="player_name")
+    sample_df.to_csv(
+        f"data/cache/sample_packs.csv.gz",
+        index=False,
+        compression="gzip",
+    )

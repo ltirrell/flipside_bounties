@@ -5,7 +5,7 @@ import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageDraw
 from scipy.stats import ttest_ind, ttest_rel
 
 __all__ = [
@@ -49,6 +49,19 @@ __all__ = [
     "get_challenge_ttests",
     "alt_challenge_game",
     "load_challenge_reward",
+    "load_pack_info",
+    "load_pack",
+    "pack_date_ranges",
+    "alt_pack_sales",
+    "load_player_pack",
+    "load_pack_cache",
+    "series2_mint1_standard_proportions",
+    "series2_mint1_premium_proportions",
+    "get_pack_value",
+    "mint_pack",
+    "load_series2_mint1_grouped",
+    "load_pack_samples",
+    "get_avg_pack_metrics",
 ]
 
 cols_to_keep = [
@@ -129,6 +142,7 @@ main_date_ranges = [
     "2022 Week 2",
     "2022 Week 3",
     "2022 Week 4",
+    "2022 Week 5",
 ]
 play_v_player_date_ranges = [
     "All dates",
@@ -137,6 +151,7 @@ play_v_player_date_ranges = [
     "Since 2022 Week 2",
     "Since 2022 Week 3",
     "Since 2022 Week 4",
+    "Since 2022 Week 5",
 ]
 stats_date_ranges = [
     "2022 Full Season",
@@ -144,6 +159,7 @@ stats_date_ranges = [
     "2022 Week 2",
     "2022 Week 3",
     "2022 Week 4",
+    "2022 Week 5",
 ]
 
 position_type_dict = {
@@ -207,6 +223,7 @@ week_timings = {
     2: ("2022-09-15", "2022-09-22"),
     3: ("2022-09-22", "2022-09-29"),
     4: ("2022-09-29", "2022-10-06"),
+    5: ("2022-10-06", "2022-10-13"),
 }
 
 game_timings = {
@@ -276,7 +293,7 @@ game_timings = {
             pd.Timestamp("2022-09-26 23:00:00-0400", tz="US/Eastern"),
         ),
     },
-    4: {  # #TODO: add for
+    4: {
         "thursday": (
             pd.Timestamp("2022-09-29 20:15:00-0400", tz="US/Eastern"),
             pd.Timestamp("2022-09-29 23:00:00-0400", tz="US/Eastern"),
@@ -306,8 +323,94 @@ game_timings = {
             pd.Timestamp("2022-10-03 23:00:00-0400", tz="US/Eastern"),
         ),
     },
+    5: {  # #TODO: update for all challenges
+        "thursday": (
+            pd.Timestamp("2022-10-06 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-06 23:00:00-0400", tz="US/Eastern"),
+        ),
+        "slate": (
+            pd.Timestamp("2022-10-09 09:30:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-09 19:30:00-0400", tz="US/Eastern"),
+        ),
+        "sunday_night": (
+            pd.Timestamp("2022-10-09 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-09 23:00:00-0400", tz="US/Eastern"),
+        ),
+        "monday": (
+            pd.Timestamp("2022-10-10 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-10 23:00:00-0400", tz="US/Eastern"),
+        ),
+        "weekly": (
+            pd.Timestamp("2022-10-06 20:15:00-0400", tz="US/Eastern"),
+            pd.Timestamp("2022-10-10 23:00:00-0400", tz="US/Eastern"),
+        ),
+    },
 }
 
+pack_date_ranges = [
+    ("2021-12-10 06:00", "2021-12-13 23:59"),
+    ("2021-12-17 02:00", "2021-12-21 08:00"),
+    ("2022-01-07 06:00", "2022-01-07 23:59"),
+    ("2022-01-14 06:00", "2022-01-14 23:59"),
+    ("2022-02-16 06:00", "2022-02-18 23:59"),
+    ("2022-02-25 06:00", "2022-02-25 23:59"),
+    ("2022-03-02 06:00", "2022-03-02 23:59"),
+    ("2022-03-04 06:00", "2022-03-04 23:59"),
+    ("2022-03-11 06:00", "2022-03-11 23:59"),
+    ("2022-09-27 06:00", "2022-09-27 23:59"),
+    ("2022-10-11 06:00", "2022-10-11 23:59"),
+]
+
+player_pack_cols = [
+    "Datetime",
+    "Date",
+    "tx_id",
+    "Price",
+    "Buyer",
+    "Seller",
+    "Player",
+    "Team",
+    "Position",
+    "Season",
+    "Week",
+    "Play_Type",
+    "Moment_Date",
+    "Moment_Tier",
+    "NFLALLDAY_ID",
+    "Serial_Number",
+    "Away_Team_Name",
+    "Away_Team_Score",
+    "Home_Team_Name",
+    "Home_Team_Score",
+    "Player_ID",
+    "Player_Number",
+    "Classification",
+    "Total_Circulation",
+    "NFT_ID",
+    "Series",
+    "Set_Name",
+    "unique_id",
+    "marketplace_id",
+    "site",
+    "Rarity",
+    "Datetime_Reveal",
+    "Moments_In_Pack",
+    "Datetime_Pack",
+    "Pack_Price",
+    "Pack_Buyer",
+    "Pack Type",
+]
+
+
+series2_mint1_standard_proportions = {
+    "COMMON": 18182 / 22222,
+    "RARE": 4000 / 22222,
+    "LEGENDARY": 40 / 22222,
+}
+series2_mint1_premium_proportions = {
+    "RARE": 3480 / 3800,
+    "LEGENDARY": 320 / 3800,
+}
 n_players = 40
 
 
@@ -404,11 +507,16 @@ def get_position_group(x):
 
 @st.cache(ttl=3600 * 24 * 7)
 def load_headshot(headshot_url):
-    image = Image.open(urlopen(headshot_url))
     basewidth = 200
-    wpercent = basewidth / float(image.size[0])
-    hsize = int((float(image.size[1]) * float(wpercent)))
-    image = image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
+    try:
+        image = Image.open(urlopen(headshot_url))
+        wpercent = basewidth / float(image.size[0])
+        hsize = int((float(image.size[1]) * float(wpercent)))
+        image = image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
+    except:
+        image = Image.new("RGB", (basewidth,142))
+        img = ImageDraw.Draw(image)
+        img.rectangle([(0, 0), (200, 200 )], fill='#6c706d')
     return image
 
 
@@ -913,7 +1021,11 @@ def get_challenge_ttests(challenge_df, use_cache=False, update_cache=False):
     return results
 
 
-def alt_challenge_game(df, xval, yval,):
+def alt_challenge_game(
+    df,
+    xval,
+    yval,
+):
     base = alt.Chart(df)
     chart = (
         base.mark_point(filled=True, size=100)
@@ -930,9 +1042,9 @@ def alt_challenge_game(df, xval, yval,):
                 "Team:N",
                 "Position:N",
                 "Moment_Tier:N",
-                "Price:Q",
+                "Price (USD):Q",
                 "Count:Q",
-                "Floor:Q"
+                "Floor Price (USD):Q",
             ],
             color=alt.Color(
                 "Display:N",
@@ -992,3 +1104,232 @@ def alt_challenge_game(df, xval, yval,):
 @st.experimental_memo(ttl=3600 * 24, suppress_st_warning=True)
 def load_challenge_reward():
     return pd.read_csv("data/NFLALLDAY_Challenges-RewardBreakdown.csv")
+
+
+@st.experimental_memo(ttl=3600 * 24, suppress_st_warning=True)
+def load_pack_info(summary=True):
+    pack_info = pd.read_csv("data/packs.csv")
+    pack_info["Datetime"] = pd.to_datetime(pack_info["Datetime"]).dt.tz_convert(
+        "US/Eastern"
+    )
+    if summary:
+        pack_info = pack_info[
+            ["Number", "Name", "Site", "Type", "Series", "Cost", "Supply"]
+        ]
+    return pack_info
+
+
+@st.experimental_memo(ttl=3600 * 24, suppress_st_warning=True)
+def load_pack():
+    pack_df = pd.read_csv("data/pack_combined.csv.gz")
+    pack_df["Datetime_Reveal"] = pd.to_datetime(
+        pack_df["Datetime_Reveal"]
+    ).dt.tz_localize("US/Eastern")
+    pack_df["Datetime_Pack"] = pd.to_datetime(pack_df["Datetime_Pack"]).dt.tz_localize(
+        "US/Eastern"
+    )
+
+    pack_df["Reveal_Lag"] = pack_df["Datetime_Reveal"] - pack_df["Datetime_Pack"]
+    # pack_df["Reveal_Lag_Seconds"] = (
+    #     pack_df["Datetime_Reveal"] - pack_df["Datetime_Pack"]
+    # ).dt.total_seconds()
+    grouped = (
+        pack_df.groupby(
+            [
+                pd.Grouper(key="Datetime_Pack", axis=0, freq="min"),
+                "Pack Type",
+            ]
+        )
+        .agg(
+            Sales_Count=("tx_id_Pack", "nunique"),
+            Moments_In_Pack=("Moments_In_Pack", "mean"),
+            Pack_Price=("Pack_Price", "mean"),
+            Reveal_Time_Avg=("Datetime_Reveal", "mean"),
+            Reveal_Time_Earliest=("Datetime_Reveal", "min"),
+            Reveal_Time_Latest=("Datetime_Reveal", "max"),
+            Reveal_Lag_Avg=("Reveal_Lag", "mean"),
+            Reveal_Lag_Earliest=("Reveal_Lag", "min"),
+            Reveal_Lag_Latest=("Reveal_Lag", "max"),
+        )
+        .reset_index()
+    )
+    for x in [
+        "Reveal_Lag_Avg",
+        "Reveal_Lag_Earliest",
+        "Reveal_Lag_Latest",
+    ]:
+        grouped[f"{x}_Seconds"] = grouped[x].dt.total_seconds()
+        grouped[x] = grouped[x].apply(lambda x: str(x.floor("s")))
+    # pack_df["Reveal_Lag"] = pack_df["Reveal_Lag"].apply(lambda x: str(x.floor("s")))
+
+    return pack_df, grouped
+
+
+def alt_pack_sales(df):
+    max_range = df.Sales_Count.max()
+    pts = alt.selection(type="interval", encodings=["x"])
+    scatter = (
+        alt.Chart(title="Pack Sales")
+        .mark_point(filled=True)
+        .encode(
+            x=alt.X("yearmonthdatehoursminutes(Datetime_Pack):T", title=None),
+            y=alt.Y(
+                "Sales_Count",
+                title="Sales per Minute",
+                scale=alt.Scale(domain=[0, max_range]),
+            ),
+            color="Pack Type",
+            opacity=alt.condition(pts, alt.value(1), alt.value(0.05)),
+            tooltip=[
+                alt.Tooltip(
+                    "yearmonthdatehoursminutes(Datetime_Pack):T",
+                    title="Pack Purchase Datetime",
+                ),
+                "Pack Type",
+                alt.Tooltip("Sales_Count", title="Sales per Minute"),
+                alt.Tooltip("Pack_Price", title="Pack Price ($)", format=".0f"),
+                alt.Tooltip("Moments_In_Pack", title="Moments In Pack", format=".0f"),
+                alt.Tooltip(
+                    "yearmonthdatehoursminutes(Reveal_Time_Avg):T",
+                    title="Average Reveal Datetime",
+                ),
+                alt.Tooltip(
+                    "yearmonthdatehoursminutes(Reveal_Time_Earliest):T",
+                    title="Earliest Reveal Datetime",
+                ),
+                alt.Tooltip(
+                    "yearmonthdatehoursminutes(Reveal_Time_Latest):T",
+                    title="Latest Reveal Datetime",
+                ),
+                alt.Tooltip("Reveal_Lag_Avg", title="Average Reveal Lag"),
+                alt.Tooltip("Reveal_Lag_Earliest", title="Earliest Reveal Lag"),
+                alt.Tooltip("Reveal_Lag_Latest", title="Latest Reveal Lag"),
+            ],
+        )
+        .properties(height=600, width=500)
+        .add_selection(pts)
+        # .interactive()
+    )
+    hist = (
+        (
+            alt.Chart(title="Count of Sales per Minute")
+            .mark_bar()
+            .encode(
+                x=alt.X("count()", title="Count (Sales per Minute)"),
+                y=alt.Y(
+                    "mbin:Q",
+                    title=None,
+                    axis=alt.Axis(values=[0], ticks=True, grid=False, labels=False),
+                    scale=alt.Scale(domain=[0, max_range]),
+                ),
+                color="Pack Type",
+                tooltip=[
+                    alt.Tooltip("count()", title="Number of timepoints"),
+                    alt.Tooltip("mbin:Q", title="Minimum Sales per Minute"),
+                ],
+            )
+            .transform_filter(pts)
+        ).properties(height=600, width=200)
+        # .interactive()
+    )
+    chart = (
+        alt.hconcat(scatter, hist, data=df)
+        .transform_bin("mbin", field="Sales_Count", bin=alt.Bin(maxbins=50))
+        .resolve_scale(y="shared")
+        .properties(spacing=0)
+    )
+    return chart
+
+
+@st.experimental_memo(ttl=3600 * 24, suppress_st_warning=True)
+def load_player_pack():
+    # #TODO: cache
+    df = pd.read_csv(
+        "data/current_allday_data_pack.csv.gz", usecols=player_pack_cols
+    ).dropna(
+        subset=[
+            "Player",
+            "Datetime_Reveal",
+            "Datetime_Pack",
+        ]
+    )
+    for x in [
+        "Datetime",
+        "Date",
+        "Datetime_Reveal",
+        "Datetime_Pack",
+    ]:
+        df[x] = pd.to_datetime(df[x]).dt.tz_localize("US/Eastern")
+    df["Mint_Date"] = pd.to_datetime(df.Datetime_Pack.dt.date).dt.tz_localize(
+        "US/Eastern"
+    )
+    return df
+
+@st.experimental_memo(ttl=3600 * 24, suppress_st_warning=True)
+def load_pack_cache(date_range):
+    if type(date_range) == str:
+        date_str = date_range.replace(" ", "_")
+    else:
+        date_str = date_range[0].split(" ")[0]
+    df = pd.read_csv(f"data/cache/pack_data-{date_str}--grouped.csv.gz")
+    return df
+
+
+def get_pack_value(player_pack_data, proporiton_dict, pack_type, i):
+    common = player_pack_data[player_pack_data.Moment_Tier == "COMMON"]
+    rare = player_pack_data[player_pack_data.Moment_Tier == "RARE"]
+    legendary = player_pack_data[player_pack_data.Moment_Tier == "LEGENDARY"]
+    
+    tier = np.random.choice(
+        list(proporiton_dict.keys()), p=list(proporiton_dict.values())
+    )
+    if tier == "COMMON":
+        players = common.sample(4)
+    elif tier == "RARE":
+        if pack_type == "Standard":
+            players = pd.concat([common.sample(3), rare.sample(1)])
+        elif pack_type == "Premium":
+            players = pd.concat([common.sample(6), rare.sample(2)])
+    elif tier == "LEGENDARY":
+        if pack_type == "Standard":
+            players = pd.concat([common.sample(3), legendary.sample(1)])
+        elif pack_type == "Premium":
+            players = pd.concat([common.sample(6), rare.sample(1), legendary.sample(1)])
+    else:
+        raise ValueError
+
+    players = players[["Player", "site", "Moment_Tier", "Price"]]
+    players["pack_type"] = pack_type
+    players["pack_tier"] = tier
+    players["idx"] = i
+    return players
+
+
+def mint_pack(sample_df, pack_type):
+    if pack_type == "Standard":
+        n = 10000
+    elif pack_type == "Premium":
+        n = 5000
+    else:
+        raise ValueError
+    randn = np.random.randint(0, n)
+    players = sample_df[(sample_df.idx == randn) & (sample_df.pack_type == pack_type)]
+    return players
+
+@st.experimental_memo(ttl=3600 * 24, suppress_st_warning=True)
+def load_series2_mint1_grouped():
+    return pd.read_csv("data/cache/series2_mint1_grouped.csv")
+
+@st.experimental_memo(ttl=3600 * 24, suppress_st_warning=True)
+def load_pack_samples():
+    return pd.read_csv("data/cache/sample_packs.csv.gz")
+
+def get_avg_pack_metrics(data):
+    vals = {"Price":{}, "Count":{}}
+    for tier in ['COMMON', "RARE", "LEGENDARY"]:
+        df = data[data['Moment_Tier'] == tier]
+        total_spent = (df.Price*df.Count).sum()
+        total_sold = df.Count.sum()
+        vals["Price"][tier] = total_spent/total_sold
+        vals["Count"][tier] = df.Count.mean()
+    return vals

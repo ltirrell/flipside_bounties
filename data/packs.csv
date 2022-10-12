@@ -1,0 +1,62 @@
+Number,Name,Type,Status,Site,Series,Category,Cost,Moments,Supply,Available,Sold Out,Datetime,Include
+1,"Premium (Series 1, Week 13)",PREMIUM,COMPLETE,https://nflallday.com/packs/1,Series 1,Premium,249,4,9000,0,TRUE,2022-02-26 10:00+11,TRUE
+2,"Standard (Series 1, Week 13)",STANDARD,COMPLETE,https://nflallday.com/packs/2,Series 1,Standard,49,3,52000,135,FALSE,2022-02-26 06:00+11,TRUE
+3,"Standard (Series 1, Week 14)",STANDARD,COMPLETE,https://nflallday.com/packs/3,Series 1,Standard,49,3,51000,1,FALSE,2022-03-03 18:00+11,TRUE
+4,"Premium (Series 1, Week 14)",PREMIUM,COMPLETE,https://nflallday.com/packs/4,Series 1,Premium,249,4,8739,0,TRUE,2022-03-03 10:00+11,TRUE
+5,"Standard (Series 1, Week 17)",STANDARD,COMPLETE,https://nflallday.com/packs/5,Series 1,Standard,49,3,49000,0,TRUE,,FALSE
+6,"Premium (Series 1, Week 17)",PREMIUM,COMPLETE,https://nflallday.com/packs/6,Series 1,Premium,249,4,9000,0,TRUE,,FALSE
+7,"Standard (Series 1, Week 18)",STANDARD,COMPLETE,https://nflallday.com/packs/7,Series 1,Standard,49,3,45000,0,TRUE,2022-03-11 06:00+11,TRUE
+8,"Premium (Series 1, Week 18)",PREMIUM,COMPLETE,https://nflallday.com/packs/8,Series 1,Premium,249,4,8500,0,TRUE,2022-03-11 10:00+11,TRUE
+9,Super Wild Card Weekend (Series 1),PLAYOFFS,COMPLETE,https://nflallday.com/packs/9,Series 1,Playoffs,49,3,37500,0,TRUE,2022-04-09 04:00+11,FALSE
+10,Divisional Round (Series 1),PLAYOFFS,COMPLETE,https://nflallday.com/packs/10,Series 1,Playoffs,49,3,32500,0,TRUE,2022-01-29 08:00+11,FALSE
+11,Conference Championships (Series 1),PLAYOFFS,COMPLETE,https://nflallday.com/packs/11,Series 1,Playoffs,49,3,42204,0,TRUE,2022-02-05 08:00+11,FALSE
+12,Pro Bowl (Series 1),PLAYOFFS,COMPLETE,https://nflallday.com/packs/12,Series 1,Playoffs,59,3,50000,0,TRUE,,FALSE
+13,Super Bowl LVI Standard Pack (Series 1),STANDARD,COMPLETE,https://nflallday.com/packs/13,Series 1,Standard,59,4,36000,0,TRUE,2022-02-17 07:00+11,TRUE
+14,Super Bowl LVI Premium Pack (Series 1),PREMIUM,COMPLETE,https://nflallday.com/packs/14,Series 1,Premium,259,9,32000,421,FALSE,2022-02-19 07:00+11,TRUE
+15,Historical I: In the Spotlight,STANDARD,COMPLETE,https://nflallday.com/packs/15,Historical,Historical,84,4,56037,0,TRUE,2022-04-23 04:00+11,FALSE
+16,Rewind: Catalysts (Series 1),STANDARD,COMPLETE,https://nflallday.com/packs/16,Series 1,Rewind,59,4,31650,0,TRUE,2022-05-27 04:00+11,FALSE
+17,"Rewind: Reward (Series 1, Release 1)",STANDARD,COMPLETE,https://nflallday.com/packs/17,Series 1,Rewind,0,3,2017,0,TRUE,,FALSE
+18,"Rewind: Reward (Series 1, Release 1.1)",STANDARD,COMPLETE,https://nflallday.com/packs/18,Series 1,Rewind,0,3,100,0,TRUE,,FALSE
+19,"Rewind: Reward (Series 1, Release 2)",STANDARD,COMPLETE,https://nflallday.com/packs/19,Series 1,Rewind,0,3,6472,0,TRUE,,FALSE
+20,"Rewind: Reward (Series 1, Release 3)",STANDARD,COMPLETE,https://nflallday.com/packs/20,Series 1,Rewind,0,3,715,0,TRUE,,FALSE
+21,"Celebration (Series 1, Release 1)",STANDARD,COMPLETE,https://nflallday.com/packs/21,Series 1,Celebration,0,3,44624,0,TRUE,,FALSE
+22,"Rewind: Reward (Series 1, Release 4)",STANDARD,COMPLETE,https://nflallday.com/packs/22,Series 1,Rewind,0,3,7979,0,TRUE,,FALSE
+23,"Rewind: Reward (Series 1, Release 5)",STANDARD,COMPLETE,https://nflallday.com/packs/23,Series 1,Rewind,0,3,1122,0,TRUE,,FALSE
+24,"Rewind: Reward (Series 1, Release 6)",PREMIUM,COMPLETE,https://nflallday.com/packs/24,Series 1,Rewind,0,5,28,0,TRUE,,FALSE
+25,"Rewind: Reward (Series 1, Release 7)",STANDARD,COMPLETE,https://nflallday.com/packs/25,Series 1,Rewind,0,3,11611,0,TRUE,,FALSE
+26,"Rewind: Reward (Series 1, Release 8)",STANDARD,COMPLETE,https://nflallday.com/packs/26,Series 1,Rewind,0,3,679,0,TRUE,,FALSE
+27,Enshrinement: Class of 2022,PREMIUM,COMPLETE,https://nflallday.com/packs/27,Historical,Historical,79,1,3300,0,TRUE,,FALSE
+28,Rewind: Playmakers (Series 1),STANDARD,COMPLETE,https://nflallday.com/packs/28,Series 1,Rewind,59,4,25000,0,TRUE,2022-08-13 03:00+11,FALSE
+30,Rewind: Headliners (Series 1),STANDARD,COMPLETE,https://nflallday.com/packs/30,Series 1,Rewind,59,4,25000,0,TRUE,2022-08-13 06:00+11,FALSE
+31,"Rewind: Reward (Series 1, Release 9)",STANDARD,COMPLETE,https://nflallday.com/packs/31,Series 1,Rewind,0,3,40029,0,TRUE,2022-08-20 04:00+11,FALSE
+32,"Rewind: Reward (Series 1, Release 10)",STANDARD,COMPLETE,https://nflallday.com/packs/32,Series 1,Rewind,0,3,4774,0,TRUE,,FALSE
+33,"Rewind: Reward (Series 1, Release 11)",PREMIUM,COMPLETE,https://nflallday.com/packs/33,Series 1,Rewind,0,3,114,0,TRUE,,FALSE
+34,Historical II: Modern Greatness,STANDARD,COMPLETE,https://nflallday.com/packs/34,Historical,Historical,84,4,20075,0,TRUE,2022-09-02 04:00+11,FALSE
+35,"Celebration (Series 1, Release 2)",STANDARD,COMPLETE,https://nflallday.com/packs/35,Series 1,Celebration,0,3,52939,0,TRUE,,FALSE
+36,4th & Goal (Series 1),STANDARD,COMPLETE,https://nflallday.com/packs/36,Series 1,4th & Goal,0,4,28548,0,TRUE,,FALSE
+37,"Playbook: One-Star Reward (Series 2, Week 1)",STANDARD,COMPLETE,https://nflallday.com/packs/37,Series 2,Playbook,0,1,16014,0,TRUE,,FALSE
+38,"Playbook: Two-Star Reward (Series 2, Week 1)",STANDARD,COMPLETE,https://nflallday.com/packs/38,Series 2,Playbook,0,2,11942,0,TRUE,,FALSE
+39,"Playbook: Three-Star Reward (Series 2, Week 1)",STANDARD,COMPLETE,https://nflallday.com/packs/39,Series 2,Playbook,0,3,5529,0,TRUE,,FALSE
+40,"Playbook: Four-Star Reward (Series 2, Week 1)",STANDARD,COMPLETE,https://nflallday.com/packs/40,Series 2,Playbook,0,3,3419,0,TRUE,,FALSE
+41,"Playbook: Five-Star Reward (Series 2, Week 1)",STANDARD,COMPLETE,https://nflallday.com/packs/41,Series 2,Playbook,0,3,2433,0,TRUE,,FALSE
+42,"Playbook: One-Star Reward (Series 2, Week 2)",STANDARD,COMPLETE,https://nflallday.com/packs/42,Series 2,Playbook,0,1,9231,0,TRUE,,FALSE
+43,"Playbook: Two-Star Reward (Series 2, Week 2)",STANDARD,COMPLETE,https://nflallday.com/packs/43,Series 2,Playbook,0,2,8308,0,TRUE,,FALSE
+44,"Playbook: Three-Star Reward (Series 2, Week 2)",STANDARD,COMPLETE,https://nflallday.com/packs/44,Series 2,Playbook,0,3,3992,0,TRUE,,FALSE
+45,"Playbook: Four-Star Reward (Series 2, Week 2)",STANDARD,COMPLETE,https://nflallday.com/packs/45,Series 2,Playbook,0,3,3044,0,TRUE,,FALSE
+46,"Playbook: Five-Star Reward (Series 2, Week 2)",PREMIUM,COMPLETE,https://nflallday.com/packs/46,Series 2,Playbook,0,3,2107,0,TRUE,,FALSE
+47,"Premium (Series 2, Week 1-2)",PREMIUM,COMPLETE,https://nflallday.com/packs/47,Series 2,Premium,219,8,3800,0,TRUE,2022-09-28 05:00+11,TRUE
+48,"Standard (Series 2, Week 1-2)",STANDARD,COMPLETE,https://nflallday.com/packs/48,Series 2,Standard,59,4,22222,5,TRUE,2022-09-28 07:00+11,TRUE
+49,"Playbook: One-Star Reward (Series 2, Week 3)",STANDARD,COMPLETE,https://nflallday.com/packs/49,Series 2,Playbook,0,1,6048,0,TRUE,,FALSE
+50,"Playbook: Two-Star Reward (Series 2, Week 3)",STANDARD,COMPLETE,https://nflallday.com/packs/50,Series 2,Playbook,0,2,5502,0,TRUE,,FALSE
+51,"Playbook: Three-Star Reward (Series 2, Week 3)",STANDARD,COMPLETE,https://nflallday.com/packs/51,Series 2,Playbook,0,3,4192,0,TRUE,,FALSE
+52,"Playbook: Four-Star Reward (Series 2, Week 3)",STANDARD,COMPLETE,https://nflallday.com/packs/52,Series 2,Playbook,0,3,3267,0,TRUE,,FALSE
+53,"Playbook: Five-Star Reward (Series 2, Week 3)",PREMIUM,COMPLETE,https://nflallday.com/packs/53,Series 2,Playbook,0,3,2454,0,TRUE,,FALSE
+54,"Reward (Series 2, Release 1)",PREMIUM,COMPLETE,https://nflallday.com/packs/54,Series 2,Reward,0,3,3388,0,TRUE,,FALSE
+55,"Reward (Series 2, Release 2)",PREMIUM,COMPLETE,https://nflallday.com/packs/55,Series 2,Reward,0,3,81,0,TRUE,,FALSE
+56,"Playbook: One-Star Reward (Series 2, Week 4)",STANDARD,COMPLETE,https://nflallday.com/packs/56,Series 2,Playbook,0,1,6543,0,TRUE,,FALSE
+57,"Playbook: Two-Star Reward (Series 2, Week 4)",STANDARD,COMPLETE,https://nflallday.com/packs/57,Series 2,Playbook,0,2,6313,0,TRUE,,FALSE
+58,"Playbook: Three-Star Reward (Series 2, Week 4)",STANDARD,COMPLETE,https://nflallday.com/packs/58,Series 2,Playbook,0,3,5022,0,TRUE,,FALSE
+59,"Playbook: Four-Star Reward (Series 2, Week 4)",STANDARD,COMPLETE,https://nflallday.com/packs/59,Series 2,Playbook,0,3,3942,0,TRUE,,FALSE
+60,"Playbook: Five-Star Reward (Series 2, Week 4)",PREMIUM,COMPLETE,https://nflallday.com/packs/60,Series 2,Playbook,0,3,2762,0,TRUE,,FALSE
+61,"Premium (Series 2, Week 3-4)",PREMIUM,COMPLETE,https://nflallday.com/packs/61,Series 2,Premium,99,5,4000,0,TRUE,2022-10-12 04:00+11,TRUE
+62,"Standard (Series 2, Week 3-4)",STANDARD,COMPLETE,https://nflallday.com/packs/62,Series 2,Standard,49,4,24000,0,TRUE,2022-10-12 06:00+11,TRUE

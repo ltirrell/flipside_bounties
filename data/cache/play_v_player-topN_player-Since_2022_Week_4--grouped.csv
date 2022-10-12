@@ -1,41 +1,41 @@
 Player,Position,mean,count
-New Orleans Saints,Team,1966.6666666666667,3
-Pressley Harvin III,P,1535.0,2
-Nick Bolton,LB,1483.3333333333333,3
-Aidan Hutchinson,DL,950.0,1
+Trey Lance,QB,2900.0,1
+New Orleans Saints,Team,1933.75,4
+Pressley Harvin III,P,1383.4,5
+George Pickens,WR,1099.5,8
 Jordan Willis,DL,920.0,1
-Zach Allen,DL,837.0,2
-New York Jets,Team,810.0,1
-Green Bay Packers,Team,453.25,8
-Trevon Diggs,DB,442.57142857142856,7
-Micah Hyde,DB,373.7142857142857,7
-Sam Mills,LB,360.8695652173913,23
-Tom Brady,QB,336.51666666666665,120
-Leonard Fournette,RB,307.7894736842105,19
-Cliff Branch,WR,256.0,6
-Dalvin Cook,RB,215.43636363636364,55
-Jacksonville Jaguars,Team,202.55555555555554,36
-Matt Ryan,QB,196.53846153846155,13
-Rashod Bateman,WR,193.53333333333333,15
-Justin Tucker,K,193.1320754716981,53
-Khalil Mack,LB,185.0,12
-Dallas Goedert,TE,179.33333333333334,3
-Seattle Seahawks,Team,172.0,13
-Ezekiel Elliott,RB,164.2173913043478,23
-Rashaad Penny,RB,159.72211350293543,511
-Aaron Rodgers,QB,158.13333333333333,150
-Bryant Young,DL,157.7872340425532,47
-Gregory Rousseau,DL,154.02631578947367,38
-Baltimore Ravens,Team,146.5,6
-Tony Boselli,OL,145.75,8
-Tennessee Titans,Team,140.1978021978022,91
-New England Patriots,Team,140.0897435897436,156
-Patrick Mahomes II,QB,135.4375,80
-Jared Goff,QB,128.6711409395973,149
-Richard Sherman,DB,126.80555555555556,36
-Chicago Bears,Team,125.171875,128
-Jaelan Phillips,LB,123.0,1
-Justin Herbert,QB,112.32291666666667,96
-DeVonta Smith,WR,104.95,40
-Mike Williams,WR,104.68,25
-Kirk Cousins,QB,104.5,10
+Aidan Hutchinson,DL,882.6666666666666,15
+Travon Walker,LB,856.375,8
+Zach Allen,DL,824.3333333333334,3
+New York Jets,Team,818.1428571428571,7
+Dameon Pierce,RB,795.0,1
+Breshad Perriman,WR,684.5,2
+Green Bay Packers,Team,526.2307692307693,13
+Sam Mills,LB,350.7741935483871,31
+Jacksonville Jaguars,Team,283.33898305084745,59
+Tom Brady,QB,257.9413333333333,375
+Dalvin Cook,RB,202.59420289855072,69
+Justin Tucker,K,184.15277777777777,72
+Dallas Goedert,TE,176.45454545454547,22
+Micah Hyde,DB,168.77777777777777,27
+Justin Herbert,QB,168.50689655172414,290
+Seattle Seahawks,Team,168.05,20
+Ezekiel Elliott,RB,158.4848484848485,33
+Bryant Young,DL,158.2280701754386,57
+Cliff Branch,WR,150.0,12
+Tennessee Titans,Team,147.1032258064516,155
+Khalil Mack,LB,137.77777777777777,27
+Patrick Mahomes II,QB,137.47927199191102,989
+Trevor Lawrence,QB,134.8925925925926,270
+New England Patriots,Team,131.46524064171123,187
+Jared Goff,QB,125.22137404580153,262
+Chicago Bears,Team,120.05504587155963,218
+Darius Slay Jr.,DB,113.28571428571429,49
+Rashaad Penny,RB,112.90446976336547,1141
+Tony Boselli,OL,111.07692307692308,13
+Jaelan Phillips,LB,110.5,6
+CeeDee Lamb,WR,106.07806691449814,1076
+Kirk Cousins,QB,101.68852459016394,61
+San Francisco 49ers,Team,100.47272727272727,55
+Chris Godwin,WR,98.36571428571429,175
+Richard Seymour,DL,97.61904761904762,42
